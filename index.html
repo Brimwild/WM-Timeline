@@ -22,8 +22,10 @@
   .panel{background:var(--panel);border-radius:8px;padding:14px 16px;margin:20px 0 0;font-size:14px}
   .panel h2{font-size:14px;font-weight:500;margin:0 0 8px}
   .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  input[type=number]{font:inherit;width:88px;padding:6px 8px;border:.5px solid var(--line);
-    border-radius:6px;background:var(--page);color:var(--c-ink)}
+  input[type=number],input[type=text],select{font:inherit;padding:6px 8px;
+    border:.5px solid var(--line);border-radius:6px;background:var(--page);color:var(--c-ink)}
+  input[type=number]{width:88px}
+  input[type=text]{width:150px}
   button{font:inherit;padding:6px 12px;border:.5px solid var(--line);border-radius:6px;
     background:var(--page);color:var(--c-ink);cursor:pointer}
   button:disabled{opacity:.4;cursor:default}
@@ -42,10 +44,23 @@
 
   <div class="panel" id="pagePanel" hidden>
     <div class="row">
-      <button id="older">&larr; Earlier 25 days</button>
-      <button id="newer">Later 25 days &rarr;</button>
-      <button id="latest">Jump to latest</button>
+      <label for="show">Showing</label>
+      <select id="show">
+        <option value="window">Characters in this window</option>
+        <option value="active">All active characters</option>
+        <option value="all">Everyone, including retired</option>
+      </select>
+      <input type="text" id="find" placeholder="Find a character">
     </div>
+    <div class="row" style="margin-top:10px">
+      <button id="older">&larr; Earlier</button>
+      <button id="newer">Later &rarr;</button>
+      <button id="latest">Latest</button>
+      <label for="jump" style="margin-left:6px">Jump to day</label>
+      <input type="number" id="jump" step="1">
+      <button id="go">Go</button>
+    </div>
+    <p id="viewOut" style="margin:10px 0 0;color:var(--c-inkMuted);font-size:13px"></p>
   </div>
 
   <div class="panel" id="freePanel" hidden>
@@ -73,9 +88,9 @@
 // -- CONFIG -----------------------------------------------------------------
 // Option A, simplest: publish each tab to the web as CSV and paste the three URLs.
 var SHEETS = {
-  expeditions: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmbTDGLdKPcsRFATGsgEhXdAoWo2fsd95rqkzdTeox3C__vbhEIh8hzRKVKmXuK0giaNQhIF9E90i8/pub?gid=1904491669&single=true&output=csv',
-  roster:      'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmbTDGLdKPcsRFATGsgEhXdAoWo2fsd95rqkzdTeox3C__vbhEIh8hzRKVKmXuK0giaNQhIF9E90i8/pub?gid=1714052412&single=true&output=csv',
-  characters:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmbTDGLdKPcsRFATGsgEhXdAoWo2fsd95rqkzdTeox3C__vbhEIh8hzRKVKmXuK0giaNQhIF9E90i8/pub?gid=1213383073&single=true&output=csv'
+  expeditions: 'PASTE_EXPEDITIONS_CSV_URL',
+  roster:      'PASTE_ROSTER_CSV_URL',
+  characters:  'PASTE_CHARACTERS_CSV_URL'
 };
 
 // Option B, fresher: deploy Code.gs as a web app and paste its /exec URL here.
@@ -86,7 +101,7 @@ var WEB_APP_URL = '';
 var C = window.WMChart;
 document.head.insertAdjacentHTML('beforeend', '<style>' + C.chartCSS() + '</style>');
 
-var state = { data: null, endDay: null, queryDay: null };
+var state = { data: null, endDay: null, queryDay: null, show: 'window', find: '' };
 
 function parseCSV(text) {
   var rows = [], row = [], f = '', q = false, i, c;
@@ -126,8 +141,8 @@ function get(url) {
   });
 }
 
-// Re-derive the model, optionally shifting the visible window back in time.
-function model() {
+// Full model: every character, every expedition. Used for availability queries.
+function fullModel() {
   var m = C.buildModel({
     expeditions: state.data.expeditions,
     roster: state.data.roster,
@@ -141,14 +156,46 @@ function model() {
   return m;
 }
 
+// Which rows to actually draw. A campaign accumulates characters forever, so the default
+// shows only those the visible window says anything about. Everyone stays in the data.
+function pickRows(m) {
+  var q = state.find.trim().toLowerCase();
+  if (q) {
+    return m.characters.filter(function (c) {
+      return c.name.toLowerCase().indexOf(q) > -1;
+    });
+  }
+  return m.characters.filter(function (c) {
+    if (state.show !== 'all' && c.status !== 'active') return false;
+    if (state.show !== 'window') return true;
+    var inWindow = c.bars.some(function (b) {
+      return b.endDay > m.dayMin && b.startDay < m.dayMax;
+    });
+    return inWindow || (c.currentDay >= m.dayMin && c.currentDay <= m.dayMax);
+  });
+}
+
 function draw() {
-  var m = model();
+  var m = fullModel();
+  var total = m.characters.length;
+  m.characters = pickRows(m);
   document.getElementById('chart').innerHTML = C.renderChart(m);
+
+  var hidden = total - m.characters.length;
+  document.getElementById('viewOut').textContent =
+    'Days ' + m.dayMin + '\u2013' + m.dayMax + ' \u00b7 ' + m.characters.length +
+    ' of ' + total + ' characters' + (hidden ? ' \u00b7 ' + hidden + ' hidden' : '');
+
+  var p = new URLSearchParams();
+  p.set('end', state.endDay);
+  if (state.queryDay !== null) p.set('day', state.queryDay);
+  if (state.show !== 'window') p.set('show', state.show);
+  history.replaceState(null, '', '?' + p.toString());
   return m;
 }
 
 function refreshFree() {
-  var m = model();
+  var m = fullModel();
   var d = Number(document.getElementById('freeDay').value);
   var names = C.freeOn(m, d);
   document.getElementById('freeOut').textContent =
@@ -158,8 +205,10 @@ function refreshFree() {
 function mount(data, note) {
   state.data = data;
   var m = C.buildModel(data);
-  state.endDay = m.dayMax;
-  state.queryDay = m.dayMax - 10;
+  var url = new URLSearchParams(location.search);
+  state.endDay = Number(url.get('end')) || m.dayMax;
+  state.queryDay = url.has('day') ? Number(url.get('day')) : m.dayMax - 10;
+  if (['window', 'active', 'all'].indexOf(url.get('show')) > -1) state.show = url.get('show');
 
   document.getElementById('sub').textContent = note;
   document.getElementById('freePanel').hidden = false;
@@ -175,28 +224,46 @@ function mount(data, note) {
   });
 
   var full = C.buildModel(data);
-  var earliest = full.expeditions.length ? full.expeditions[0].startDay : 0;
-  function page(delta) {
-    var next = state.endDay + delta;
-    var floor = earliest + C.SPEC.WINDOW_DAYS;
-    state.endDay = Math.max(floor, Math.min(full.dayMax, next));
+  var floor = (full.expeditions.length ? full.expeditions[0].startDay : 0) + C.SPEC.WINDOW_DAYS;
+
+  function goTo(end) {
+    state.endDay = Math.max(floor, Math.min(full.dayMax, Math.round(end)));
     draw();
-    syncButtons();
+    sync();
   }
-  function syncButtons() {
-    var floor = earliest + C.SPEC.WINDOW_DAYS;
+  function sync() {
     document.getElementById('older').disabled = state.endDay <= floor;
     document.getElementById('newer').disabled = state.endDay >= full.dayMax;
     document.getElementById('latest').disabled = state.endDay >= full.dayMax;
+    document.getElementById('jump').value = state.endDay;
   }
-  document.getElementById('older').onclick = function () { page(-25); };
-  document.getElementById('newer').onclick = function () { page(25); };
-  document.getElementById('latest').onclick = function () {
-    state.endDay = full.dayMax; draw(); syncButtons();
+
+  document.getElementById('older').onclick = function () { goTo(state.endDay - 25); };
+  document.getElementById('newer').onclick = function () { goTo(state.endDay + 25); };
+  document.getElementById('latest').onclick = function () { goTo(full.dayMax); };
+  document.getElementById('go').onclick = function () {
+    goTo(Number(document.getElementById('jump').value));
   };
+  document.getElementById('jump').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') goTo(Number(this.value));
+  });
+
+  var showSel = document.getElementById('show');
+  showSel.value = state.show;
+  showSel.addEventListener('change', function () {
+    state.show = this.value;
+    draw();
+  });
+
+  var find = document.getElementById('find');
+  find.addEventListener('input', function () {
+    state.find = this.value;
+    showSel.disabled = this.value.trim() !== '';
+    draw();
+  });
 
   draw();
-  syncButtons();
+  sync();
   refreshFree();
 
   if (m.conflicts.length) {

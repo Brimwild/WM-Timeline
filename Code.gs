@@ -82,7 +82,7 @@ function applyValidation_() {
   var exp = ss.getSheetByName('expeditions');
   var ros = ss.getSheetByName('roster');
   var chr = ss.getSheetByName('characters');
-  var N = 2000;
+  var N = 5000;
 
   var wholeDay = SpreadsheetApp.newDataValidation()
     .requireNumberGreaterThanOrEqualTo(0)
@@ -125,7 +125,7 @@ function applyValidation_() {
 
 function applyConditionalFormats_() {
   var exp = SpreadsheetApp.getActive().getSheetByName('expeditions');
-  var range = exp.getRange('A2:H2001');
+  var range = exp.getRange('A2:H5001');
   var rule = SpreadsheetApp.newConditionalFormatRule()
     .whenFormulaSatisfied('=AND($D2<>"",$E2<>"",$E2<$D2)')
     .setBackground('#fbe4e2')
@@ -229,15 +229,22 @@ function showLogDialog() {
 /** Called from the dialog to populate it. */
 function getLogContext() {
   var exps = readTab_('expeditions');
-  var used = {};
-  exps.forEach(function (e) { if (e.code) used[e.code.toUpperCase()] = true; });
+
+  // Codes only need to be unique among expeditions on screen at the same time, so a
+  // letter is free again once nothing recent is using it. This never runs out.
+  var latest = 0;
+  exps.forEach(function (e) { latest = Math.max(latest, Number(e.end_day) || 0); });
+  var recent = {};
+  exps.forEach(function (e) {
+    if (e.code && Number(e.end_day) > latest - 60) recent[e.code.toUpperCase()] = true;
+  });
 
   var code = '';
   for (var i = 0; i < 26; i++) {
     var c = String.fromCharCode(65 + i);
-    if (!used[c]) { code = c; break; }
+    if (!recent[c]) { code = c; break; }
   }
-  if (!code) code = 'A' + (exps.length + 1);
+  if (!code) code = 'A';
 
   var maxId = 0;
   exps.forEach(function (e) {

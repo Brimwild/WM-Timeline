@@ -1,292 +1,219 @@
-# Expedition timeline — setup
+# WM-Timeline
 
-A per-character campaign-time chart for a West Marches game. Data lives in a Google
-Sheet your DMs already know how to edit. A static page reads it and draws the timeline.
-No server, no database, no accounts.
+A per-character campaign-time tracker for a West Marches game. Data lives in a Google
+Sheet your DMs already know how to edit. A static page reads it and draws a timeline
+showing where every character sits in campaign time.
 
-Work through the six phases in order. Each ends with something you can look at, so you
-always know whether the last step worked before starting the next one.
+**Live:** https://brimwild.github.io/WM-Timeline/
 
-Total time: about an hour, most of it in phase 1 typing in your own expeditions.
-
----
-
-## What's in this folder
-
-| File | Edit it? |
-|---|---|
-| `index.html` | Yes — the config block near the top. That's the only edit you need. |
-| `chart.js` | No, unless you're deliberately changing the chart. See CHART-SPEC.md. |
-| `Code.gs` | No. Paste it into Apps Script; it builds and runs the sheet. |
-| `reference.svg` | No. Generated. Committed on purpose. |
-| `verify.mjs` | No. Runs in CI. Needs Node, which you don't need locally. |
-| `CHART-SPEC.md` | Reference for the frozen geometry and the sheet schema. |
-| `.github/workflows/verify.yml` | No. Runs the drift check on every push. |
-
-No build step, no bundler, no dependencies. `index.html` and `chart.js` are plain
-files a browser opens directly.
+No server, no database, no accounts, no build step, no dependencies.
 
 ---
 
-## Phase 0 — see it working before you change anything
+## The problem this solves
 
-Double-click `index.html`. That's it.
+In a West Marches game, parties form ad hoc and expeditions run different lengths. If
+Thorne goes out for six days and Vex for two, they no longer share a date. Track time
+per character and you get two failure modes:
 
-**Checkpoint:** the seven-character demo chart — Thorne through Nettle, days 30 to 80, a
-red dashed box on Old Grask's row. The line under the title says the URLs aren't set yet,
-which is correct; nothing is wired up.
+**Paradoxes.** A character recorded in two places at once, because nobody noticed the day
+ranges overlapped.
 
-Try the "who is free" box and the paging buttons under the chart.
+**Drift.** Regular players race ahead while irregular ones fall behind, until a character
+is so far back in campaign time they can't share a table with anyone.
 
-If your browser blocks it (Chrome is occasionally strict about local files) or you'd
-rather serve it, any of these work. On Windows, `python3` is not a command; it hits a
-Microsoft Store stub. Use the interpreter you actually have:
+One rule prevents the first and contains the second:
 
-```powershell
-cd "C:\path\to\wm-timeline"
-& "C:\Users\BretC\miniconda3\python.exe" -m http.server 8000
-```
+> **Time only moves forward, and catching up is free.**
+>
+> A character may join any expedition departing on or after their own current day. The gap
+> in between is downtime. They may never join one departing before it.
 
-The `&` is PowerShell's call operator, needed because the path is quoted. Then open
-`http://localhost:8000`. From an Anaconda Prompt rather than PowerShell, plain
-`python -m http.server 8000` works.
+That's the whole invariant, and it's a single comparison. The sheet's logging dialog
+enforces it at write time; the chart makes violations visible when they slip through
+anyway.
 
-You do not need Node. The drift check runs in GitHub Actions in phase 4.
+## Reading the chart
 
----
+- **Rows** are characters, sorted by current campaign day, descending.
+- **Bars** are expeditions. Same colour and letter means the same expedition, so a party
+  reads as a vertical stack of matching bars.
+- **Whitespace** is downtime, which means availability. Scan a column to see who is free.
+- **The right edge** is each character's current day. The staircase it forms is your drift
+  readout — a long tail means someone is stranded in the past.
+- **A red dashed box** is a timeline conflict. Two expeditions overlap for that character.
+  It's a bug in the log, not in the chart.
 
-## Phase 1 — build the sheet
+## How it works
 
-Don't type the headers by hand. `Code.gs` builds the whole thing.
+1. DMs log expeditions into a Google Sheet, normally through the sheet's own
+   **West Marches → Log an expedition** dialog.
+2. Three tabs are published to the web as CSV, or the Apps Script is deployed as a JSON
+   endpoint.
+3. `index.html` fetches that data, joins it, derives each character's current day, and
+   detects conflicts.
+4. `chart.js` renders the SVG. GitHub Pages serves the whole thing as static files.
 
-1. New Google Sheet.
-2. **Extensions → Apps Script.** Delete the placeholder `function myFunction() {}`.
-3. Paste all of `Code.gs`. Save (the disk icon).
-4. Back on the sheet, reload the browser tab. A **West Marches** menu appears next to Help.
-5. **West Marches → Set up sheet.** Approve the permission prompt the first time; it's
-   your own script asking for access to your own spreadsheet.
-
-**Checkpoint:** three tabs named `expeditions`, `roster`, `characters`, with bold frozen
-headers, correct column widths, and dropdowns. `roster` column A only accepts expedition
-ids that exist; column B suggests known characters. An expedition whose end day is before
-its start day turns pink.
-
-Running "Set up sheet" again is safe. It repairs headers and validation without touching
-data, so run it after any change you're unsure about.
-
-Now **West Marches → Add demo data** to load the same seven characters as
-`reference.svg`. Old Grask has a deliberate conflict in there so you can see what a broken
-timeline looks like. Try **West Marches → Check timeline conflicts** — it should find him.
-
-Then clear the demo rows and log your three most recent real expeditions using
-**West Marches → Log an expedition**. The dialog handles ids, picks an unused bar code,
-converts duration to an end day, adds roster rows, and creates any character it hasn't
-seen before.
-
-It also enforces the one rule the whole system rests on: a character can only join an
-expedition departing on or after their own current day. Characters who aren't back yet
-grey out as you type a departure day, and submitting anyway gives you a named list and
-the earliest legal date. You can override deliberately by pressing the button a second
-time, which is the right behaviour — the tool should make the illegal case visible, not
-impossible.
-
-Two things worth knowing regardless:
-
-- **Days are plain integers from campaign day 0.** Not dates. Storing them as dates makes
-  every calculation miserable, especially with a homebrew calendar. The chart can display
-  an in-world calendar later without changing what's stored.
-- **There is no current-day column, and you should not add one.** It's derived as the
-  highest `end_day` in a character's roster rows. A hand-maintained copy disagrees with
-  the log within a month and people stop trusting the chart.
-
-**Checkpoint:** three real expeditions logged, no conflicts reported.
+Nothing is precomputed and nothing is cached on our side. Reload the page and you see the
+sheet's current state.
 
 ---
 
-## Phase 2 — publish the tabs
+## Files
 
-This is the step people get wrong, so read it carefully.
+### `index.html`
+The page itself, and **the only file you normally edit**. Contains the config block with
+your sheet URLs, a hand-rolled CSV parser, the fetch and error handling, the availability
+panel, the conflict list, and the window paging buttons. Deliberately holds everything
+that might reasonably change, so that `chart.js` doesn't have to.
 
-For **each** of the three tabs:
+Open it in a browser directly — no server needed.
 
-1. **File → Share → Publish to web**
-2. In the first dropdown, select **the specific tab** — not "Entire document"
-3. In the second dropdown, select **Comma-separated values (.csv)**
-4. Click **Publish**, confirm
-5. Copy the URL it gives you
+### `chart.js`
+**The frozen renderer.** Every coordinate, dimension and colour in the chart lives in the
+`SPEC`, `RAMPS` and `CHROME` constants at the top of this file, and nowhere else. Also
+holds `buildModel()`, which turns raw sheet rows into a sorted, conflict-annotated model,
+and `renderChart()`, which turns that model into an SVG string.
 
-A correct URL looks like this:
+Written as a classic script so it loads with a plain `<script src>` tag in the browser and
+as a CommonJS module in Node, with no bundler in between. Don't edit it casually; see the
+drift contract below.
 
-```
-https://docs.google.com/spreadsheets/d/e/2PACX-1vT.../pub?gid=0&single=true&output=csv
-```
+### `reference.svg`
+**The golden file.** The exact output of `renderChart()` for a fixed seven-character demo
+dataset. Committed on purpose. It is the definition of what the chart is supposed to look
+like, expressed as bytes rather than prose.
 
-Check for `/d/e/` in the path and `output=csv` at the end. If your URL contains `/edit`
-or ends in `#gid=0`, you copied from the address bar instead of the publish dialog. Go
-back to step 5.
+It intentionally has no embedded stylesheet — colours come from CSS variables the host page
+supplies — so it looks unstyled if you open it on its own. That's expected. It exists to be
+diffed, not admired.
 
-Publishing is not the same as sharing. It makes that tab's contents readable as CSV by
-anyone with the link, and adds the CORS headers a static page needs to read it without an
-API key. Edit access is unchanged — people you haven't invited still can't write.
+### `verify.mjs`
+**The drift check.** Re-renders the demo dataset and compares the result to
+`reference.svg`. Byte-identical passes; anything else fails with a line-by-line diff
+naming exactly what moved. Run `node verify.mjs` locally if you have Node, or let CI do it.
 
-Because of that, don't put anything private in these tabs. Player phone numbers, secret
-backstory, and unrevealed plot go in a different, unpublished sheet.
+`node verify.mjs --write` regenerates `reference.svg` after a deliberate change.
 
-Now open `index.html` in a text editor. Near the top of the `<script>` block:
+### `.github/workflows/verify.yml`
+Tells GitHub Actions to run `verify.mjs` on every push and pull request. `verify.mjs` is
+the check; this file is the trigger. Without it the check exists but never runs.
 
-```js
-var SHEETS = {
-  expeditions: 'PASTE_EXPEDITIONS_CSV_URL',
-  roster:      'PASTE_ROSTER_CSV_URL',
-  characters:  'PASTE_CHARACTERS_CSV_URL'
-};
-```
+### `Code.gs`
+The Google Apps Script that runs inside the spreadsheet. Paste it into
+**Extensions → Apps Script** and it adds a **West Marches** menu with four items:
 
-Replace the three placeholders with your URLs, keeping the quotes.
+- **Set up sheet** builds all three tabs with correct headers, frozen bold header rows,
+  column widths, dropdown validation and conditional formatting. Idempotent, so re-running
+  it repairs structure without touching data.
+- **Log an expedition** opens a dialog that derives the id, picks an unused bar code,
+  converts duration to an end day, writes the roster rows, and creates unknown characters.
+  It enforces the forward-time invariant: characters who aren't back yet grey out as you
+  type a departure day, and submitting anyway names them and gives you the earliest legal
+  date.
+- **Check timeline conflicts** reports overlaps in plain language.
+- **Add demo data** loads the same seven characters as `reference.svg`, conflict included.
 
-### Option B — deploy the script as a web app
+Also contains a `doGet()` you can deploy as a web app to serve the data as JSON, which
+avoids Google's five-minute publish-to-web cache.
 
-Skip the three CSV URLs entirely and get one URL with no cache delay.
+### `CHART-SPEC.md`
+Reference documentation for the frozen chart: every geometry constant and what it means,
+the derived formulas, the rounding and window rules, the colour ramps and how they're
+assigned, and the full sheet schema. Read this before changing anything about how the
+chart looks.
 
-In the Apps Script editor: **Deploy → New deployment → gear icon → Web app.** Execute as
-**Me**, who has access **Anyone**. Deploy, then copy the `/exec` URL.
+### `SETUP.md`
+The step-by-step installation guide, phase 0 through 6, with checkpoints and
+troubleshooting. Start here if you're standing this up from scratch.
 
-In `index.html`, set `WEB_APP_URL` to that URL. When it's set, the three CSV URLs are
-ignored.
-
-The trade-off: publish-to-web is two clicks per tab and lags five minutes.
-The web app updates instantly but requires a redeployment (**Deploy → Manage deployments
-→ edit → New version**) whenever you change `Code.gs`. Changing sheet *data* never needs a
-redeployment. Start with option A; move to B if the cache annoys people.
-
----
-
-## Phase 3 — see your own data
-
-Save `index.html` and refresh it in the browser.
-
-**Checkpoint:** your characters, your expeditions. The line under the title mentions the
-five-minute cache. The footer shows how many expeditions and characters loaded.
-
-If the counts are wrong or the chart is empty, jump to troubleshooting below.
-
-Compare against the same page with `?demo=1` on the end of the URL, which always renders
-the reference dataset. If demo looks right and yours doesn't, the problem is in the sheet, not the code.
-
----
-
-## Phase 4 — put it online
-
-GitHub Pages. Free, and the included workflow will run the drift check for you.
-
-1. Create a new **public** repository, e.g. `wm-timeline`. Pages on a private repo needs
-   a paid plan.
-2. Push every file in this folder to the repository root, with `index.html` at the top
-   level, not inside a subfolder.
-3. In the repo: **Settings → Pages**. Under Source pick **Deploy from a branch**, then
-   branch `main`, folder `/ (root)`. Save.
-4. Wait about a minute. Watch the **Actions** tab if you're impatient — Pages deploys as
-   a workflow now, so a failure shows up there rather than silently doing nothing.
-
-**Checkpoint:** `https://<your-username>.github.io/wm-timeline/` shows your chart.
-
-Post that URL in your Discord. It works on phones, which is where DMs will actually check
-it. Every push to `main` redeploys with no build step.
-
-If you'd rather not use git at all, drag this folder onto Netlify Drop and you'll have a
-URL in about ten seconds. You lose the automatic drift check.
+### `package.json`
+Marks the project as CommonJS and provides `npm run verify`. There are no dependencies and
+never should be.
 
 ---
 
-## Phase 5 — backfill
+## The drift contract
 
-Now that it works, enter the rest of your campaign history. Sort your expedition log by
-date and work forward, since `id` ordering doesn't matter but getting `start_day` right
-does.
+The chart's design is settled, and the point of the setup below is that it stays settled.
 
-Expect the chart to surface conflicts you didn't know about. Overlapping bars mean a
-character was recorded in two places at once, which is a real bug in the log rather than a
-bug in the chart. The panel below the chart names each one in plain language. Fix them by
-adjusting the day range that's wrong, or by deciding one of the two expeditions happened
-later than you thought.
+1. All geometry and colour live in `SPEC` / `RAMPS` / `CHROME` in `chart.js`. No
+   coordinate or hex value appears anywhere else in the codebase.
+2. `reference.svg` is the committed output for a fixed input.
+3. CI diffs them on every push.
+4. To change the chart **on purpose**: edit `SPEC`, bump `SPEC.version`, run
+   `node verify.mjs --write`, and commit the new `reference.svg` in the same commit as the
+   spec change.
 
-**Checkpoint:** no red boxes. The staircase on the right edge tells you who's drifted
-behind and needs to be pulled into the next expedition.
+A `reference.svg` diff without a `SPEC.version` bump is drift by definition, and the build
+goes red.
 
----
+## Data model
 
-## Phase 6 — make logging actually happen
+Two tables carry everything; the third is optional.
 
-This is the phase that decides whether the project survives. The chart is not the hard
-part; keeping the sheet current is.
+**`expeditions`** — `id`, `name`, `code`, `start_day`, `end_day`, `dm`, `real_date`, `color`
+**`roster`** — `expedition_id`, `character` (one row per character per expedition)
+**`characters`** — `name`, `player`, `status`, `created_day`
 
-A DM who just finished a four-hour session at 1am will not open a spreadsheet and fill in
-eight fields. If logging takes longer than about thirty seconds, the sheet goes stale in
-two months and everyone stops trusting the chart.
+Three rules that matter:
 
-So:
+- **Days are integers from campaign day 0**, not calendar dates. The chart can display an
+  in-world calendar without changing what's stored. Storing dates makes every calculation
+  miserable, especially with a homebrew calendar.
+- **There is no current-day column.** It's derived as `max(end_day)` across a character's
+  roster rows. A hand-maintained copy disagrees with the log within a month, and then
+  nobody trusts the chart.
+- **Nothing is ever deleted.** Retired and dead characters keep their history and render
+  faded, because "who was on the Kell expedition" is a question people ask about
+  characters who no longer exist.
 
-- Use **West Marches → Log an expedition** rather than typing into cells. It's four
-  fields and a set of checkboxes, and it can't produce a malformed row.
-- Pin the sheet link in your DM channel. The dialog works in the Sheets mobile app.
-- Make it the last step of the session, before anyone leaves the call.
-- Pick one person who checks the conflict panel weekly. It takes fifteen seconds and
-  catches errors while people still remember what happened.
+## Behaviour at scale
 
----
+A campaign accumulates characters and expeditions forever. Nothing is ever deleted, so the
+chart controls what it *draws* rather than what it stores.
 
-## Troubleshooting
+**Time axis.** Fixed 50-day window, so px-per-day is constant at 9.2 whether you're on
+campaign day 40 or day 4,000. Paging and jump-to-day move the window; the chart never
+compresses.
 
-**`python3` is not recognized (Windows)**
-Windows routes `python3` to a Microsoft Store stub. You don't need Python at all now —
-just double-click `index.html`. If you want a server anyway, call your interpreter by full
-path: `& "C:\Users\BretC\miniconda3\python.exe" -m http.server 8000`. Also check you're
-in the project folder, not whichever one your terminal opened in.
+**Rows.** The default view shows only characters the visible window says something about:
+anyone with an expedition intersecting it, or whose current day falls inside it. Retired
+and dead characters are hidden unless you ask for them. Switch to "All active" or
+"Everyone" in the dropdown, or type a name in the search box to pull one character up
+regardless of filter. Measured on a simulated three-year campaign — 320 expeditions, 75
+characters — this took the chart from 75 rows and 4,715px to 32 rows and 1,455px.
 
-**The West Marches menu doesn't appear**
-Reload the spreadsheet tab. `onOpen` only runs when the sheet loads. If it's still missing,
-open Apps Script and check the file saved.
+**Legend.** Lists only expeditions overlapping the visible window. The same simulation went
+from 320 legend entries to 14.
 
-**"Authorization required" when running a menu item**
-First run only. Choose your account, click Advanced, then "Go to (unsafe)". It says unsafe
-because the script is unpublished, not because it does anything unusual — you can read
-every line of it.
+**Colours.** Eight ramps assigned in rotation, but never handing the same ramp to two
+expeditions whose day ranges overlap. Repetition across distant parts of the timeline is
+fine and intended; two concurrent parties looking identical is not.
 
-**"Could not read the sheet: 404"**
-The tab isn't published, or you pasted the `/edit` URL. Redo phase 2 and check for
-`/d/e/` and `output=csv`.
+**Bar codes.** Recycled. A letter is free again once no expedition in the last 60 days is
+using it, so A–Z never runs out.
 
-**Chart renders but is empty**
-Your `roster` rows reference expedition ids that don't exist in `expeditions`. Check for
-typos and trailing spaces in `expedition_id`.
+**Availability queries** always search every active character, not just the drawn rows, so
+filtering the view never hides someone who is free.
 
-**A character is missing**
-They have no `roster` rows. Add them to the `characters` tab to show an empty row, or
-give them an expedition.
+## Known constraints
 
-**Edits to the sheet don't appear**
-Google caches published output for roughly five minutes. Wait, then hard-refresh. If that
-delay bothers people, switch to the web app deployment in phase 2 option B, which has no
-cache.
+- Published Google Sheets are cached for roughly five minutes. The web app deployment has
+  no such delay.
+- The repo is public, so the sheet URLs in `index.html` are visible. Published sheets are
+  already publicly readable, but keep player contact details and unrevealed plot in a
+  separate, unpublished sheet.
+- Sheet validation covers 5,000 rows per tab, roughly 1,200 expeditions. Re-run
+  **Set up sheet** with a larger range if you somehow exceed it.
+- The view state lives in the URL (`?end=`, `?day=`, `?show=`), so a link to a specific
+  window and departure day is shareable. Useful for "who's free for the day 340 run?".
 
-**Web app returns old data after editing Code.gs**
-Deployments are pinned to a version. **Deploy → Manage deployments → edit → New version.**
-Changing sheet data never needs this; changing script code always does.
+## The part that actually decides whether this survives
 
-**Old expeditions have scrolled off the chart**
-The window shows 50 days. Use the paging buttons under the chart to walk backward, or
-"Jump to latest" to return.
+Not the chart. Data capture. A DM who just finished a four-hour session at 1am will not
+open a spreadsheet and fill in eight fields. If logging takes longer than about thirty
+seconds, the sheet goes stale in two months and everyone stops trusting the chart.
 
-**Bar codes have run out of letters**
-After 26 expeditions the dialog switches to two-character codes, which still fit. Reusing
-a letter is also fine; colour and position disambiguate.
-
-**Days on the axis look wrong**
-The window is pinned to 50 days ending at the furthest-ahead character, rounded up to the
-next multiple of 5. That's deliberate — it keeps the scale constant forever. If you need a
-different span, change `WINDOW_DAYS` in `chart.js` and follow the version-bump procedure
-in CHART-SPEC.md.
-
-**`node verify.mjs` fails after you changed something**
-That's it working. If the change was intentional, bump `SPEC.version` in `chart.js`, run
-`node verify.mjs --write`, and commit both files together. If it wasn't, revert.
+That's why the logging dialog exists, why it derives everything it can, and why it's a
+menu item in the sheet rather than a separate tool. Use it.

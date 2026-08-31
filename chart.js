@@ -8,7 +8,7 @@
 'use strict';
 
 const SPEC = {
-  version: '1.0.0',
+  version: '1.1.0',
 
   // Canvas
   VIEW_W: 680,
@@ -121,10 +121,25 @@ function buildModel({ expeditions, roster, characters = [], queryDay = null }) {
     .filter((e) => e.id && Number.isFinite(e.startDay) && Number.isFinite(e.endDay))
     .sort((a, b) => a.startDay - b.startDay || a.id.localeCompare(b.id));
 
+  const nRamps = SPEC.RAMP_ORDER.length;
   let ri = 0;
-  for (const e of exps) {
-    if (!e.color || !RAMPS[e.color]) e.color = SPEC.RAMP_ORDER[ri++ % SPEC.RAMP_ORDER.length];
-  }
+  exps.forEach((e, i) => {
+    if (e.color && RAMPS[e.color]) return;
+    const taken = {};
+    for (let j = 0; j < i; j++) {
+      const p = exps[j];
+      if (p.color && Math.max(p.startDay, e.startDay) < Math.min(p.endDay, e.endDay)) {
+        taken[p.color] = true;
+      }
+    }
+    let pick = null;
+    for (let k = 0; k < nRamps; k++) {
+      const cand = SPEC.RAMP_ORDER[(ri + k) % nRamps];
+      if (!taken[cand]) { pick = cand; break; }
+    }
+    e.color = pick || SPEC.RAMP_ORDER[ri % nRamps];
+    ri++;
+  });
   const byId = new Map(exps.map((e) => [e.id, e]));
 
   const statusOf = new Map(
@@ -198,9 +213,10 @@ function renderChart(model) {
   const rowY = (i) => S.ROW0_CENTER + i * S.ROW_PITCH;
   const gridBottom = rowY(Math.max(chars.length - 1, 0)) + S.GRID_BOTTOM_PAD;
 
+  const shown = exps.filter((e) => e.endDay > dayMin && e.startDay < dayMax);
   const legend = [];
   let lx = S.SAFE_L, lrow = 0;
-  for (const e of exps) {
+  for (const e of shown) {
     const label = e.code ? `${e.code} · ${e.name}` : e.name;
     const w = S.LEGEND_TEXT_DX + label.length * S.LEGEND_CHAR_W;
     if (lx + w > S.SAFE_R && lx > S.SAFE_L) { lrow++; lx = S.SAFE_L; }
