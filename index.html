@@ -59,6 +59,7 @@
       <label for="jump" style="margin-left:6px">Jump to day</label>
       <input type="number" id="jump" step="1">
       <button id="go">Go</button>
+      <span id="jumpDate" style="color:var(--c-hint);font-size:13px"></span>
     </div>
     <p id="viewOut" style="margin:10px 0 0;color:var(--c-inkMuted);font-size:13px"></p>
   </div>
@@ -68,6 +69,7 @@
     <div class="row">
       <label for="freeDay">Departing on day</label>
       <input type="number" id="freeDay" step="1">
+      <span id="freeDate" style="color:var(--c-hint);font-size:13px"></span>
     </div>
     <p id="freeOut"></p>
   </div>
@@ -88,9 +90,9 @@
 // -- CONFIG -----------------------------------------------------------------
 // Option A, simplest: publish each tab to the web as CSV and paste the three URLs.
 var SHEETS = {
-  expeditions: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmbTDGLdKPcsRFATGsgEhXdAoWo2fsd95rqkzdTeox3C__vbhEIh8hzRKVKmXuK0giaNQhIF9E90i8/pub?gid=1904491669&single=true&output=csv',
-  roster:      'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmbTDGLdKPcsRFATGsgEhXdAoWo2fsd95rqkzdTeox3C__vbhEIh8hzRKVKmXuK0giaNQhIF9E90i8/pub?gid=1714052412&single=true&output=csv',
-  characters:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQmbTDGLdKPcsRFATGsgEhXdAoWo2fsd95rqkzdTeox3C__vbhEIh8hzRKVKmXuK0giaNQhIF9E90i8/pub?gid=1213383073&single=true&output=csv'
+  expeditions: 'PASTE_EXPEDITIONS_CSV_URL',
+  roster:      'PASTE_ROSTER_CSV_URL',
+  characters:  'PASTE_CHARACTERS_CSV_URL'
 };
 
 // Option B, fresher: deploy Code.gs as a web app and paste its /exec URL here.
@@ -183,8 +185,9 @@ function draw() {
 
   var hidden = total - m.characters.length;
   document.getElementById('viewOut').textContent =
-    'Days ' + m.dayMin + '\u2013' + m.dayMax + ' \u00b7 ' + m.characters.length +
-    ' of ' + total + ' characters' + (hidden ? ' \u00b7 ' + hidden + ' hidden' : '');
+    C.formatLong(m.dayMin) + ' to ' + C.formatLong(m.dayMax) +
+    ' \u00b7 ' + m.characters.length + ' of ' + total + ' characters' +
+    (hidden ? ' \u00b7 ' + hidden + ' hidden' : '');
 
   var p = new URLSearchParams();
   p.set('end', state.endDay);
@@ -198,6 +201,7 @@ function refreshFree() {
   var m = fullModel();
   var d = Number(document.getElementById('freeDay').value);
   var names = C.freeOn(m, d);
+  document.getElementById('freeDate').textContent = isFinite(d) ? C.formatLong(d) : '';
   document.getElementById('freeOut').textContent =
     names.length ? names.join(', ') : 'Nobody is available that day.';
 }
@@ -236,6 +240,7 @@ function mount(data, note) {
     document.getElementById('newer').disabled = state.endDay >= full.dayMax;
     document.getElementById('latest').disabled = state.endDay >= full.dayMax;
     document.getElementById('jump').value = state.endDay;
+    document.getElementById('jumpDate').textContent = C.formatLong(state.endDay);
   }
 
   document.getElementById('older').onclick = function () { goTo(state.endDay - 25); };
@@ -246,6 +251,10 @@ function mount(data, note) {
   };
   document.getElementById('jump').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') goTo(Number(this.value));
+  });
+  document.getElementById('jump').addEventListener('input', function () {
+    var v = Number(this.value);
+    document.getElementById('jumpDate').textContent = isFinite(v) ? C.formatLong(v) : '';
   });
 
   var showSel = document.getElementById('show');
@@ -270,7 +279,8 @@ function mount(data, note) {
     document.getElementById('conflictPanel').hidden = false;
     document.getElementById('conflictList').innerHTML = m.conflicts.map(function (c) {
       return '<li>' + c.character + ' is on ' + c.a.name + ' and ' + c.b.name +
-             ' at the same time (days ' + c.startDay + '\u2013' + c.endDay + ')</li>';
+             ' at the same time (' + C.formatDay(c.startDay) + ' to ' +
+             C.formatDay(c.endDay) + ', days ' + c.startDay + '\u2013' + c.endDay + ')</li>';
     }).join('');
   }
 

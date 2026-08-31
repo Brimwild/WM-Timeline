@@ -1,4 +1,4 @@
-# Chart spec v1.0.0 — frozen
+# Chart spec v1.2.0 — frozen
 
 The chart is defined by the `SPEC` and `RAMPS` constants in `chart.js`, not by this
 document. This document explains them. If the two ever disagree, `chart.js` wins.
@@ -40,11 +40,12 @@ pixels at full width; `width="100%"` scales the whole thing on narrow screens.
 | `VIEW_W` | 680 | viewBox width, fixed |
 | `SAFE_L` / `SAFE_R` | 40 / 640 | content bounds |
 | `GRID_X0` / `GRID_X1` | 130 / 590 | time axis start and end |
-| `WINDOW_DAYS` | 50 | days visible; fixes px-per-day at 9.2 |
-| `TICK_EVERY` | 5 | axis label and gridline interval |
-| `AXIS_BASELINE` | 34 | day-number text baseline |
-| `GRID_TOP` | 44 | top of vertical gridlines |
-| `ROW0_CENTER` | 68 | vertical centre of first character row |
+| `WINDOW_DAYS` | 54 | days visible (9 weeks); fixes px-per-day at 8.52 |
+| `TICK_EVERY` | 6 | one tick per 6-day week |
+| `MONTH_BASELINE` | 26 | month-band text baseline |
+| `AXIS_BASELINE` | 44 | day-of-month text baseline |
+| `GRID_TOP` | 54 | top of vertical gridlines |
+| `ROW0_CENTER` | 78 | vertical centre of first character row |
 | `ROW_PITCH` | 40 | distance between row centres |
 | `GRID_BOTTOM_PAD` | 22 | below last row centre to grid bottom |
 | `BAR_H` / `BAR_RX` | 20 / 4 | normal expedition bar |
@@ -66,10 +67,30 @@ viewH      = legendY(lastRow) + LEGEND_TEXT_DY + BOTTOM_PAD
 `round(x(end) - x(start))`, not `round(x(end)) - round(x(start))`. The two differ by a
 pixel on some bars, and this is exactly the kind of thing that drifts silently.
 
-**Window rule.** `dayMax` is the highest current day rounded up to the next multiple of 5.
-`dayMin` is `dayMax - 50`. This guarantees 11 evenly spaced ticks and a constant 9.2
-px/day regardless of campaign length, so the chart looks identical in month one and
-month thirty.
+**Window rule.** `dayMax` is the highest current day rounded forward to the next day that
+opens a week. `dayMin` is `dayMax - 54`. Because 54 is exactly nine 6-day weeks, both edges
+land on week boundaries, every tick is a week start, and month boundaries always coincide
+with a tick. px/day is a constant 8.52 regardless of campaign length.
+
+## Calendar
+
+The sheet stores integer campaign days and knows nothing about the calendar. All in-world
+formatting happens at render time through the `CALENDAR` object in `chart.js`:
+
+- Ten months of 36 days, six 6-day weeks each, so every month opens on a Selundag.
+- `epochDayOfYear` maps campaign day 0 to a day-of-year. Haerfest 27 is `3 * 36 + 27 = 135`.
+  **This is the only value to change if the campaign start date is ever corrected**, and
+  nothing in the sheet moves when it does.
+- `fromDay(n)` returns year, month, day-of-month, weekday, and moon age. Because the lunar
+  cycle is 36 days beginning new on the 1st, moon age equals day-of-month minus one, so the
+  axis already tells you the phase. Full moon is the 19th.
+- `formatDay(n)` gives the compact `Hae 27` used in tight labels; `formatLong(n)` gives
+  `Keendag, 27 Haerfest` for prose.
+- Setting `CALENDAR.enabled = false` reverts every label to plain `d27` day numbers.
+
+The axis renders in two tiers: month names on the upper band, day-of-month on the lower.
+A month label drops to a three-letter abbreviation below 80px of visible span and is
+omitted entirely below 40px, so a month clipped at the window edge never overflows.
 
 ## Colour
 

@@ -8,7 +8,7 @@
 'use strict';
 
 const SPEC = {
-  version: '1.1.0',
+  version: '1.2.0',
 
   // Canvas
   VIEW_W: 680,
@@ -18,13 +18,16 @@ const SPEC = {
   // Time axis
   GRID_X0: 130,
   GRID_X1: 590,
-  WINDOW_DAYS: 50,
-  TICK_EVERY: 5,
+  WINDOW_DAYS: 54,
+  TICK_EVERY: 6,
 
   // Vertical rhythm
-  AXIS_BASELINE: 34,
-  GRID_TOP: 44,
-  ROW0_CENTER: 68,
+  MONTH_BASELINE: 26,
+  AXIS_BASELINE: 44,
+  GRID_TOP: 54,
+  ROW0_CENTER: 78,
+  MONTH_LABEL_FULL: 80,
+  MONTH_LABEL_ABBR: 40,
   ROW_PITCH: 40,
   GRID_BOTTOM_PAD: 22,
 
@@ -45,7 +48,7 @@ const SPEC = {
   CONFLICT_DASH: '3 2',
 
   // Right-hand current-day label
-  DAY_LABEL_X: 598,
+  DAY_LABEL_X: 596,
 
   // Query line
   QUERY_DASH: '4 3',
@@ -100,6 +103,68 @@ function paletteCSS() {
     dark.push(line(`c-${name}`, c[1]));
   }
   return `:root{${light.join(';')}}\n@media (prefers-color-scheme:dark){:root{${dark.join(';')}}}`;
+}
+
+
+// Campaign calendar. Purely a display layer -- the sheet stores integer days and never
+// changes. Ten 36-day months, six 6-day weeks each, so every month opens on a Selundag
+// and the moon (36-day cycle, new on the 1st) tracks day-of-month exactly.
+const CALENDAR = {
+  enabled: true,
+  monthDays: 36,
+  weekDays: 6,
+  months: ['Croppceir', 'Gimmdur', 'Lathadur', 'Haerfest', 'Foradur',
+           'Cwaludur', 'Meargsyce', 'Aurildur', 'Hrimdu', 'Uhtadur'],
+  abbr:   ['Cro', 'Gim', 'Lat', 'Hae', 'For', 'Cwa', 'Mea', 'Aur', 'Hri', 'Uht'],
+  weekdays: ['Selundag', 'Tyrsdag', 'Keendag', 'Taldag', 'Tormdag', 'Savradag'],
+
+  // Which in-world day-of-year is campaign day 0? Haerfest 27 = 3*36 + 27 = 135.
+  // This is the only number to change if the campaign start date is ever corrected.
+  epochDayOfYear: 135
+};
+
+function yearDays() { return CALENDAR.months.length * CALENDAR.monthDays; }
+
+/** Campaign day integer -> in-world date parts. */
+function fromDay(n) {
+  const total = yearDays();
+  const abs = CALENDAR.epochDayOfYear - 1 + n;
+  const r = ((abs % total) + total) % total;
+  const mi = Math.floor(r / CALENDAR.monthDays);
+  const dom = (r % CALENDAR.monthDays) + 1;
+  return {
+    year: Math.floor(abs / total) + 1,
+    monthIndex: mi,
+    month: CALENDAR.months[mi],
+    abbr: CALENDAR.abbr[mi],
+    dayOfMonth: dom,
+    weekday: CALENDAR.weekdays[(dom - 1) % CALENDAR.weekDays],
+    isWeekStart: (dom - 1) % CALENDAR.weekDays === 0,
+    isMonthStart: dom === 1,
+    moonAge: dom - 1
+  };
+}
+
+/** Compact form for tight labels: "Hae 27", or "d27" when the calendar is off. */
+function formatDay(n) {
+  if (!CALENDAR.enabled) return 'd' + n;
+  const p = fromDay(n);
+  return p.abbr + ' ' + p.dayOfMonth;
+}
+
+/** Full form for prose: "Keendag, 27 Haerfest". */
+function formatLong(n) {
+  if (!CALENDAR.enabled) return 'day ' + n;
+  const p = fromDay(n);
+  return p.weekday + ', ' + p.dayOfMonth + ' ' + p.month + (p.year > 1 ? ' (Y' + p.year + ')' : '');
+}
+
+/** Smallest day >= n that opens a week. Keeps ticks and month starts aligned. */
+function ceilToWeek(n) {
+  if (!CALENDAR.enabled) return Math.ceil(n / SPEC.TICK_EVERY) * SPEC.TICK_EVERY;
+  let d = n;
+  for (let i = 0; i < CALENDAR.weekDays; i++, d++) if (fromDay(d).isWeekStart) return d;
+  return n;
 }
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -188,7 +253,7 @@ function buildModel({ expeditions, roster, characters = [], queryDay = null }) {
   );
 
   const maxDay = Math.max(0, ...chars.map((c) => c.currentDay));
-  const dayMax = Math.ceil(maxDay / SPEC.TICK_EVERY) * SPEC.TICK_EVERY || SPEC.WINDOW_DAYS;
+  const dayMax = ceilToWeek(maxDay) || SPEC.WINDOW_DAYS;
   const dayMin = dayMax - SPEC.WINDOW_DAYS;
 
   return { characters: chars, expeditions: exps, conflicts, dayMin, dayMax, queryDay };
@@ -235,7 +300,8 @@ function renderChart(model) {
 
   const o = [];
   const desc =
-    `Expedition timeline. ${chars.length} characters as rows, campaign days ${dayMin} to ${dayMax} ` +
+    `Expedition timeline. ${chars.length} characters as rows, ${formatLong(dayMin)} to ` +
+    `${formatLong(dayMax)} ` +
     `across. Coloured bars are expeditions; matching colours stacked vertically went out together. ` +
     `Empty space is downtime. Each row ends at that character's current campaign day.` +
     (hasConflict ? ` ${model.conflicts.length} timeline conflict(s) outlined in red.` : '');
@@ -244,11 +310,37 @@ function renderChart(model) {
   o.push(`<title>Per-character expedition timeline</title>`);
   o.push(`<desc>${esc(desc)}</desc>`);
 
-  o.push(`<text class="ts" x="${S.SAFE_L}" y="${S.AXIS_BASELINE}">campaign day</text>`);
+  o.push(`<text class="ts" x="${S.SAFE_L}" y="${S.AXIS_BASELINE}">${
+    CALENDAR.enabled ? 'day' : 'campaign day'}</text>`);
+
   for (let d = dayMin; d <= dayMax; d += S.TICK_EVERY) {
     const px = Math.round(x(d));
-    o.push(`<text class="ts" x="${px}" y="${S.AXIS_BASELINE}" text-anchor="middle">${d}</text>`);
+    const label = CALENDAR.enabled ? fromDay(d).dayOfMonth : d;
+    o.push(`<text class="ts" x="${px}" y="${S.AXIS_BASELINE}" text-anchor="middle">${label}</text>`);
     o.push(`<line x1="${px}" y1="${S.GRID_TOP}" x2="${px}" y2="${gridBottom}" class="gl"/>`);
+  }
+
+  // Month tier. Bands are labelled at their left edge, clipped to the visible window,
+  // and drop to an abbreviation or vanish entirely when the visible span is too narrow.
+  if (CALENDAR.enabled) {
+    let d = dayMin;
+    while (d < dayMax) {
+      const p = fromDay(d);
+      let end = d + (CALENDAR.monthDays - p.dayOfMonth + 1);  // always > d
+      if (end > dayMax) end = dayMax;
+      const x0 = Math.round(x(d));
+      const span = Math.round(x(end)) - x0;
+      if (d !== dayMin) {
+        o.push(`<line x1="${x0}" y1="${S.MONTH_BASELINE + 6}" x2="${x0}" y2="${gridBottom}" class="ml"/>`);
+      }
+      const name = span >= S.MONTH_LABEL_FULL ? p.month
+                 : span >= S.MONTH_LABEL_ABBR ? p.abbr : null;
+      if (name) {
+        const yr = p.year > 1 ? ` \u00b7 Y${p.year}` : '';
+        o.push(`<text class="th" x="${x0 + 5}" y="${S.MONTH_BASELINE}">${esc(name + yr)}</text>`);
+      }
+      d = end;
+    }
   }
 
   chars.forEach((c, i) => {
@@ -284,7 +376,8 @@ function renderChart(model) {
       );
     }
 
-    o.push(`<text class="ts${dim}" x="${S.DAY_LABEL_X}" y="${cy}" dominant-baseline="central">d${c.currentDay}</text>`);
+    o.push(`<text class="ts${dim}" x="${S.DAY_LABEL_X}" y="${cy}" ` +
+            `dominant-baseline="central">${esc(formatDay(c.currentDay))}</text>`);
   });
 
   if (queryDay !== null && queryDay >= dayMin && queryDay <= dayMax) {
@@ -292,7 +385,7 @@ function renderChart(model) {
     o.push(`<line x1="${qx}" y1="${S.GRID_TOP}" x2="${qx}" y2="${gridBottom}" class="query"/>`);
     o.push(
       `<text class="ts" x="${qx}" y="${gridBottom + S.QUERY_LABEL_DY}" text-anchor="middle">` +
-      `who is free on d${queryDay}?</text>`
+      `who is free on ${esc(formatDay(queryDay))}?</text>`
     );
   }
 
@@ -325,6 +418,7 @@ svg text{font-family:var(--wm-font)}
 .ts{font-size:12px;font-weight:400;fill:var(--c-inkMuted)}
 .dim{opacity:.45}
 .gl{stroke:var(--c-grid);stroke-width:.5}
+.ml{stroke:var(--c-inkMuted);stroke-width:.5;opacity:.55}
 .query{stroke:var(--c-hint);stroke-width:1;stroke-dasharray:${SPEC.QUERY_DASH}}
 .conflict{fill:none;stroke:var(--c-conflict);stroke-width:${SPEC.CONFLICT_SW};stroke-dasharray:${SPEC.CONFLICT_DASH}}
 ${ramps}`;
@@ -368,8 +462,9 @@ const DEMO = {
 };
 
 var API = { SPEC: SPEC, RAMPS: RAMPS, CHROME: CHROME, DEMO: DEMO,
-            paletteCSS: paletteCSS, buildModel: buildModel, freeOn: freeOn,
-            renderChart: renderChart, chartCSS: chartCSS };
+            CALENDAR: CALENDAR, fromDay: fromDay, formatDay: formatDay,
+            formatLong: formatLong, paletteCSS: paletteCSS, buildModel: buildModel,
+            freeOn: freeOn, renderChart: renderChart, chartCSS: chartCSS };
 
 root.WMChart = API;
 if (typeof module === 'object' && module.exports) module.exports = API;

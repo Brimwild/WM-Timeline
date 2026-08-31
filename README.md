@@ -6,25 +6,30 @@ showing where every character sits in campaign time.
 
 **Live:** https://brimwild.github.io/WM-Timeline/
 
+No server, no database, no accounts, no build step, no dependencies.
+
 ---
 
-## Why build this?
+## The problem this solves
 
-With enough players, the problem most West Marches campaigns eventually run into is time tracking. Normal campaigns dont have this issue. Downtime is when people aren't adventuring, and when there is one adventuring party and one DM, time is obvious. But in West Marches, when there are multiple parties and DM's, and some characters are in some expeditions and some are in others- it quickly becomes complicated.
+In a West Marches game, parties form ad hoc and expeditions run different lengths. If
+Thorne goes out for six days and Vex for two, they no longer share a date. Track time
+per character and you get two failure modes:
 
-The only solution, as far as I can tell, is to just track it meticulously. If people dont move the calendar forward when the time happens, looking backwards quickly gets difficult. Without receipts, no one has any idea 'when' we are, DM's have to make it up, and, ultimately, no one takes any downtime.
+**Paradoxes.** A character recorded in two places at once, because nobody noticed the day
+ranges overlapped.
 
-Given that downtime is a crucial component of West Marches campaigns, I wanted to make it easier for players and DM's to track this. 
+**Drift.** Regular players race ahead while irregular ones fall behind, until a character
+is so far back in campaign time they can't share a table with anyone.
 
-**Adventures and Players** Players have dates, 'when' they are, but events are also tracked. Color blocks on the X show us when they were. 
-
+One rule prevents the first and contains the second:
 
 > **Time only moves forward, and catching up is free.**
 >
 > A character may join any expedition departing on or after their own current day. The gap
 > in between is downtime. They may never join one departing before it.
 
-That's the whole invariant, and it's a single comparison. The sheet's logging dialogue
+That's the whole invariant, and it's a single comparison. The sheet's logging dialog
 enforces it at write time; the chart makes violations visible when they slip through
 anyway.
 
@@ -143,6 +148,41 @@ The chart's design is settled, and the point of the setup below is that it stays
 A `reference.svg` diff without a `SPEC.version` bump is drift by definition, and the build
 goes red.
 
+## The calendar
+
+Ten months of 36 days; six weeks of six days each. Every month therefore opens on a
+Selundag, and the 36-day lunar cycle tracks day-of-month exactly — new moon on the 1st,
+full moon on the 19th, so the axis already tells you the phase.
+
+Months run Croppceir, Gimmdur, Lathadur, Haerfest, Foradur (Year of Day), then Cwaludur,
+Meargsyce, Aurildur, Hrimdu, Uhtadur (Year of Night). Weekdays run Selundag, Tyrsdag,
+Keendag, Taldag, Tormdag, Savradag.
+
+Campaign day 0 is Haerfest 27, a Keendag. That mapping lives in a single constant,
+`CALENDAR.epochDayOfYear`, set to 135 (`3 * 36 + 27`). Correcting the campaign start date
+means changing that one number; no sheet data moves.
+
+The constant is declared in both `chart.js` and `Code.gs`, since neither can import the
+other. `verify.mjs` extracts Code.gs's copy and compares the two, so the build fails if the
+sheet and the chart ever disagree about what day it is.
+
+### Entering dates
+
+Nobody counts days. **West Marches → Log an expedition** asks for a month and a day of the
+month, and shows the campaign day and weekday as you pick. Duration in days is the other
+input, since that's what you know from play.
+
+Two spreadsheet functions exist for working in cells directly:
+
+- `=WMDATE(D2)` turns a campaign day into an in-world date
+- `=WMDAY("Meargsyce", 1)` turns an in-world date into a campaign day
+
+Neither is needed for normal logging. **West Marches → Show date reference** prints the
+current mapping if you want to sanity-check it.
+
+The axis shows month names on an upper band and day-of-month below. Row labels and the
+availability panel read `Mea 4`; the panels spell out `Selundag, 4 Meargsyce`.
+
 ## Data model
 
 Two tables carry everything; the third is optional.
@@ -153,9 +193,8 @@ Two tables carry everything; the third is optional.
 
 Three rules that matter:
 
-- **Days are integers from campaign day 0**, not calendar dates. The chart can display an
-  in-world calendar without changing what's stored. Storing dates makes every calculation
-  miserable, especially with a homebrew calendar.
+- **Days are integers from campaign day 0**, not calendar dates. The in-world calendar is a
+  display layer in `chart.js` and never touches the sheet.
 - **There is no current-day column.** It's derived as `max(end_day)` across a character's
   roster rows. A hand-maintained copy disagrees with the log within a month, and then
   nobody trusts the chart.
@@ -168,9 +207,9 @@ Three rules that matter:
 A campaign accumulates characters and expeditions forever. Nothing is ever deleted, so the
 chart controls what it *draws* rather than what it stores.
 
-**Time axis.** Fixed 50-day window, so px-per-day is constant at 9.2 whether you're on
-campaign day 40 or day 4,000. Paging and jump-to-day move the window; the chart never
-compresses.
+**Time axis.** Fixed 54-day window (nine 6-day weeks), so px-per-day is constant at 8.52
+whether you're on campaign day 40 or day 4,000. Paging and jump-to-day move the window; the
+chart never compresses.
 
 **Rows.** The default view shows only characters the visible window says something about:
 anyone with an expedition intersecting it, or whose current day falls inside it. Retired
