@@ -6,21 +6,18 @@ showing where every character sits in campaign time.
 
 **Live:** https://brimwild.github.io/WM-Timeline/
 
-No server, no database, no accounts, no build step, no dependencies.
 
 ---
 
-## The problem this solves
+## Why build this?
 
-In a West Marches game, parties form ad hoc and expeditions run different lengths. If
-Thorne goes out for six days and Vex for two, they no longer share a date. Track time
-per character and you get two failure modes:
+With enough players, the problem most West Marches campaigns eventually run into is time tracking. Normal campaigns dont have this issue. Downtime is when people aren't adventuring, and when there is one adventuring party and one DM, time is obvious. But in West Marches, when there are multiple parties and DM's, and some characters are in some expeditions and some are in others- it quickly becomes complicated.
 
-**Paradoxes.** A character recorded in two places at once, because nobody noticed the day
-ranges overlapped.
+The only solution, as far as I can tell, is to just track it meticulously. If people dont move the calendar forward when the time happens, looking backwards quickly gets difficult. Without receipts, no one has any idea 'when' we are, DM's have to make it up, and, ultimately, no one takes any downtime.
 
-**Drift.** Regular players race ahead while irregular ones fall behind, until a character
-is so far back in campaign time they can't share a table with anyone.
+Given that downtime is a crucial component of West Marches campaigns, I wanted to make it easier for players and DM's to track this. 
+
+**Adventures and Players** Players have dates, 'when' they are, but events are also tracked. Color blocks on the X show us when they were. 
 
 One rule prevents the first and contains the second:
 
