@@ -1,0 +1,127 @@
+<svg width="100%" viewBox="0 0 680 415" role="img" xmlns="http://www.w3.org/2000/svg">
+<title>Per-character expedition timeline</title>
+<desc>Expedition timeline. 7 characters as rows, campaign days 30 to 80 across. Coloured bars are expeditions; matching colours stacked vertically went out together. Empty space is downtime. Each row ends at that character's current campaign day. 1 timeline conflict(s) outlined in red.</desc>
+<text class="ts" x="40" y="34">campaign day</text>
+<text class="ts" x="130" y="34" text-anchor="middle">30</text>
+<line x1="130" y1="44" x2="130" y2="330" class="gl"/>
+<text class="ts" x="176" y="34" text-anchor="middle">35</text>
+<line x1="176" y1="44" x2="176" y2="330" class="gl"/>
+<text class="ts" x="222" y="34" text-anchor="middle">40</text>
+<line x1="222" y1="44" x2="222" y2="330" class="gl"/>
+<text class="ts" x="268" y="34" text-anchor="middle">45</text>
+<line x1="268" y1="44" x2="268" y2="330" class="gl"/>
+<text class="ts" x="314" y="34" text-anchor="middle">50</text>
+<line x1="314" y1="44" x2="314" y2="330" class="gl"/>
+<text class="ts" x="360" y="34" text-anchor="middle">55</text>
+<line x1="360" y1="44" x2="360" y2="330" class="gl"/>
+<text class="ts" x="406" y="34" text-anchor="middle">60</text>
+<line x1="406" y1="44" x2="406" y2="330" class="gl"/>
+<text class="ts" x="452" y="34" text-anchor="middle">65</text>
+<line x1="452" y1="44" x2="452" y2="330" class="gl"/>
+<text class="ts" x="498" y="34" text-anchor="middle">70</text>
+<line x1="498" y1="44" x2="498" y2="330" class="gl"/>
+<text class="ts" x="544" y="34" text-anchor="middle">75</text>
+<line x1="544" y1="44" x2="544" y2="330" class="gl"/>
+<text class="ts" x="590" y="34" text-anchor="middle">80</text>
+<line x1="590" y1="44" x2="590" y2="330" class="gl"/>
+<text class="th" x="40" y="68" dominant-baseline="central">Thorne</text>
+<g class="r-teal">
+<rect x="148" y="58" width="55" height="20" rx="4"/>
+<text class="ts" x="176" y="68" text-anchor="middle" dominant-baseline="central">A</text>
+</g>
+<g class="r-purple">
+<rect x="259" y="58" width="64" height="20" rx="4"/>
+<text class="ts" x="291" y="68" text-anchor="middle" dominant-baseline="central">C</text>
+</g>
+<g class="r-blue">
+<rect x="388" y="58" width="74" height="20" rx="4"/>
+<text class="ts" x="425" y="68" text-anchor="middle" dominant-baseline="central">E</text>
+</g>
+<g class="r-coral">
+<rect x="498" y="58" width="74" height="20" rx="4"/>
+<text class="ts" x="535" y="68" text-anchor="middle" dominant-baseline="central">G</text>
+</g>
+<text class="ts" x="598" y="68" dominant-baseline="central">d78</text>
+<text class="th" x="40" y="108" dominant-baseline="central">Vex</text>
+<g class="r-teal">
+<rect x="148" y="98" width="55" height="20" rx="4"/>
+<text class="ts" x="176" y="108" text-anchor="middle" dominant-baseline="central">A</text>
+</g>
+<g class="r-green">
+<rect x="286" y="98" width="55" height="20" rx="4"/>
+<text class="ts" x="314" y="108" text-anchor="middle" dominant-baseline="central">D</text>
+</g>
+<g class="r-coral">
+<rect x="498" y="98" width="74" height="20" rx="4"/>
+<text class="ts" x="535" y="108" text-anchor="middle" dominant-baseline="central">G</text>
+</g>
+<text class="ts" x="598" y="108" dominant-baseline="central">d78</text>
+<text class="th" x="40" y="148" dominant-baseline="central">Mira</text>
+<g class="r-teal">
+<rect x="148" y="138" width="55" height="20" rx="4"/>
+<text class="ts" x="176" y="148" text-anchor="middle" dominant-baseline="central">A</text>
+</g>
+<g class="r-blue">
+<rect x="388" y="138" width="74" height="20" rx="4"/>
+<text class="ts" x="425" y="148" text-anchor="middle" dominant-baseline="central">E</text>
+</g>
+<text class="ts" x="598" y="148" dominant-baseline="central">d66</text>
+<text class="th" x="40" y="188" dominant-baseline="central">Bramble</text>
+<g class="r-amber">
+<rect x="176" y="178" width="55" height="20" rx="4"/>
+<text class="ts" x="204" y="188" text-anchor="middle" dominant-baseline="central">B</text>
+</g>
+<g class="r-green">
+<rect x="286" y="178" width="55" height="20" rx="4"/>
+<text class="ts" x="314" y="188" text-anchor="middle" dominant-baseline="central">D</text>
+</g>
+<g class="r-pink">
+<rect x="415" y="178" width="28" height="20" rx="4"/>
+</g>
+<text class="ts" x="598" y="188" dominant-baseline="central">d64</text>
+<text class="th" x="40" y="228" dominant-baseline="central">Old Grask</text>
+<g class="r-purple">
+<rect x="259" y="212" width="64" height="13" rx="3"/>
+<text class="ts" x="291" y="219" text-anchor="middle" dominant-baseline="central">C</text>
+</g>
+<g class="r-green">
+<rect x="286" y="228" width="55" height="13" rx="3"/>
+<text class="ts" x="314" y="235" text-anchor="middle" dominant-baseline="central">D</text>
+</g>
+<rect x="284" y="208" width="41" height="38" rx="4" class="conflict"/>
+<text class="ts" x="598" y="228" dominant-baseline="central">d53</text>
+<text class="th" x="40" y="268" dominant-baseline="central">Sorrel</text>
+<g class="r-amber">
+<rect x="176" y="258" width="55" height="20" rx="4"/>
+<text class="ts" x="204" y="268" text-anchor="middle" dominant-baseline="central">B</text>
+</g>
+<g class="r-purple">
+<rect x="259" y="258" width="64" height="20" rx="4"/>
+<text class="ts" x="291" y="268" text-anchor="middle" dominant-baseline="central">C</text>
+</g>
+<text class="ts" x="598" y="268" dominant-baseline="central">d51</text>
+<text class="th" x="40" y="308" dominant-baseline="central">Nettle</text>
+<g class="r-amber">
+<rect x="176" y="298" width="55" height="20" rx="4"/>
+<text class="ts" x="204" y="308" text-anchor="middle" dominant-baseline="central">B</text>
+</g>
+<text class="ts" x="598" y="308" dominant-baseline="central">d41</text>
+<line x1="424" y1="44" x2="424" y2="330" class="query"/>
+<text class="ts" x="424" y="346" text-anchor="middle">who is free on d62?</text>
+<g class="r-teal"><rect x="40" y="362" width="10" height="10" rx="2"/></g>
+<text class="ts" x="56" y="371">A · Ashen vale</text>
+<g class="r-amber"><rect x="168" y="362" width="10" height="10" rx="2"/></g>
+<text class="ts" x="184" y="371">B · Hollow barrow</text>
+<g class="r-purple"><rect x="317" y="362" width="10" height="10" rx="2"/></g>
+<text class="ts" x="333" y="371">C · Ruins of Kell</text>
+<g class="r-green"><rect x="465" y="362" width="10" height="10" rx="2"/></g>
+<text class="ts" x="481" y="371">D · Saltmire</text>
+<g class="r-blue"><rect x="40" y="382" width="10" height="10" rx="2"/></g>
+<text class="ts" x="56" y="391">E · Deepwater run</text>
+<g class="r-pink"><rect x="188" y="382" width="10" height="10" rx="2"/></g>
+<text class="ts" x="204" y="391">F · Thornwatch</text>
+<g class="r-coral"><rect x="317" y="382" width="10" height="10" rx="2"/></g>
+<text class="ts" x="333" y="391">G · Nightmarch</text>
+<rect x="445" y="382" width="10" height="10" rx="2" class="conflict"/>
+<text class="ts" x="461" y="391">timeline conflict</text>
+</svg>

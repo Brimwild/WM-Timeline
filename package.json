@@ -1,0 +1,7 @@
+{
+  "name": "wm-timeline",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": { "verify": "node verify.mjs" }
+}
