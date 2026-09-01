@@ -66,6 +66,9 @@ const SPEC = {
 
   BOTTOM_PAD: 24,
   SPINE_PAD: 12,
+  NAME_CH_W: 7.5,
+  NAME_PAD: 12,
+  NAME_MIN_X: 100,
 
   // Ramp assignment order. Expeditions take these in ascending start_day order
   // unless the sheet supplies an explicit colour.
@@ -175,7 +178,7 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 // ---------------------------------------------------------------------------
 
 function buildModel({ expeditions, roster, characters = [], queryDay = null }) {
-  const exps = expeditions
+  const rawExps = expeditions
     .map((e) => ({
       id: String(e.id).trim(),
       code: String(e.code || '').trim(),
@@ -186,6 +189,28 @@ function buildModel({ expeditions, roster, characters = [], queryDay = null }) {
     }))
     .filter((e) => e.id && Number.isFinite(e.startDay) && Number.isFinite(e.endDay))
     .sort((a, b) => a.startDay - b.startDay || a.id.localeCompare(b.id));
+
+  // Merge session rows that share the same name into one expedition.
+  // Same name = same event. Overlapping sessions of the same event are not conflicts.
+  const expMap = new Map();
+  for (const e of rawExps) {
+    const key = e.name || e.id;
+    if (expMap.has(key)) {
+      const existing = expMap.get(key);
+      existing.startDay = Math.min(existing.startDay, e.startDay);
+      existing.endDay   = Math.max(existing.endDay,   e.endDay);
+      existing.rawIds.push(e.id);
+    } else {
+      expMap.set(key, { ...e, rawIds: [e.id] });
+    }
+  }
+  const exps = [...expMap.values()].sort((a, b) => a.startDay - b.startDay || a.id.localeCompare(b.id));
+
+  // Map every raw expedition id to its merged expedition object
+  const byId = new Map();
+  for (const e of exps) {
+    for (const rid of e.rawIds) byId.set(rid, e);
+  }
 
   const nRamps = SPEC.RAMP_ORDER.length;
   let ri = 0;
@@ -206,8 +231,6 @@ function buildModel({ expeditions, roster, characters = [], queryDay = null }) {
     e.color = pick || SPEC.RAMP_ORDER[ri % nRamps];
     ri++;
   });
-  const byId = new Map(exps.map((e) => [e.id, e]));
-
   const statusOf = new Map(
     characters.map((c) => [String(c.name).trim(), String(c.status || 'active').trim().toLowerCase()])
   );
@@ -232,6 +255,7 @@ function buildModel({ expeditions, roster, characters = [], queryDay = null }) {
     const bad = new Set();
     for (let i = 0; i < list.length - 1; i++) {
       for (let j = i + 1; j < list.length; j++) {
+        if (list[i].id === list[j].id) continue; // same merged expedition, not a conflict
         const s = Math.max(list[i].startDay, list[j].startDay);
         const e = Math.min(list[i].endDay, list[j].endDay);
         if (s < e) {
@@ -244,12 +268,19 @@ function buildModel({ expeditions, roster, characters = [], queryDay = null }) {
     const createdRaw = characters.find((c) => String(c.name).trim() === name);
     const createdDay = createdRaw && createdRaw.created_day !== '' && !isNaN(parseInt(createdRaw.created_day, 10))
       ? parseInt(createdRaw.created_day, 10) : firstStart;
+    const seenIds = new Set();
+    const dedupedBars = [];
+    for (const e of list) {
+      if (seenIds.has(e.id)) continue;
+      seenIds.add(e.id);
+      dedupedBars.push({ ...e, conflict: bad.has(e.id) });
+    }
     chars.push({
       name,
       status: statusOf.get(name) || 'active',
       currentDay: list.length ? Math.max(...list.map((e) => e.endDay)) : 0,
       created: createdDay,
-      bars: list.map((e) => ({ ...e, conflict: bad.has(e.id) })),
+      bars: dedupedBars,
     });
   }
 
@@ -279,8 +310,15 @@ function freeOn(model, day) {
 function renderChart(model) {
   const S = SPEC;
   const { characters: chars, expeditions: exps, dayMin, dayMax, queryDay } = model;
-  const pxPerDay = (S.GRID_X1 - S.GRID_X0) / (dayMax - dayMin);
-  const x = (d) => S.GRID_X0 + (d - dayMin) * pxPerDay;
+  // Dynamic left margin — fits the longest visible character name
+  const longestName = chars.reduce((max, c) => Math.max(max, c.name.length), 0);
+  const GX0 = Math.min(
+    Math.max(S.NAME_MIN_X, Math.round(longestName * S.NAME_CH_W) + S.SAFE_L + S.NAME_PAD),
+    S.GRID_X1 - 200
+  );
+
+  const pxPerDay = (S.GRID_X1 - GX0) / (dayMax - dayMin);
+  const x = (d) => GX0 + (d - dayMin) * pxPerDay;
   const rowY = (i) => S.ROW0_CENTER + i * S.ROW_PITCH;
   const gridBottom = rowY(Math.max(chars.length - 1, 0)) + S.GRID_BOTTOM_PAD;
 
@@ -357,7 +395,7 @@ function renderChart(model) {
     // spine — drawn first so bars render on top
     const createdX = Math.round(x(c.created != null ? c.created : (c.bars.length ? c.bars[0].startDay : dayMin)));
     const currentX = Math.round(x(c.currentDay));
-    const spineL = Math.max(S.GRID_X0, createdX - S.SPINE_PAD);
+    const spineL = Math.max(GX0, createdX - S.SPINE_PAD);
     const spineR = Math.min(S.GRID_X1, currentX + S.SPINE_PAD);
     if (spineR > spineL) {
       o.push(`<line x1="${spineL}" y1="${cy}" x2="${spineR}" y2="${cy}" stroke="var(--c-inkMuted)" stroke-width="1" opacity=".3"${dim ? ' class="dim"' : ''}/>`);
@@ -392,11 +430,11 @@ function renderChart(model) {
     }
 
     // --- endpoint circles (drawn after bars so they sit on top) ---
-    const createdOffscreen = createdX < S.GRID_X0;
+    const createdOffscreen = createdX < GX0;
     if (!createdOffscreen) {
       o.push(`<circle cx="${spineL}" cy="${cy}" r="4" fill="var(--c-grid)" stroke="var(--c-inkMuted)" stroke-width="1.2"${dim ? ' opacity=".45"' : ''}/>`);
     } else {
-      o.push(`<line x1="${S.GRID_X0}" y1="${cy - 5}" x2="${S.GRID_X0}" y2="${cy + 5}" stroke="var(--c-inkMuted)" stroke-width="1.5"${dim ? ' opacity=".45"' : ''}/>`);
+      o.push(`<line x1="${GX0}" y1="${cy - 5}" x2="${GX0}" y2="${cy + 5}" stroke="var(--c-inkMuted)" stroke-width="1.5"${dim ? ' opacity=".45"' : ''}/>`);
     }
     o.push(`<circle cx="${spineR}" cy="${cy}" r="5" fill="var(--c-ink)"${dim ? ' opacity=".45"' : ''}/>`);
 
