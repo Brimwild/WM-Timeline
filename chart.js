@@ -48,7 +48,7 @@ const SPEC = {
   CONFLICT_DASH: '3 2',
 
   // Right-hand current-day label
-  DAY_LABEL_X: 596,
+  DAY_LABEL_X: 596,  // overridden dynamically to GRID_X1 + 8 in renderChart
 
   // Query line
   QUERY_DASH: '4 3',
@@ -402,27 +402,36 @@ function renderChart(model) {
     }
 
     for (const b of c.bars) {
-      const bx = Math.round(x(b.startDay));
-      const bw = Math.round(x(b.endDay) - x(b.startDay));
+      const bxRaw = Math.round(x(b.startDay));
+      const bxEnd = Math.round(x(b.endDay));
+      // Clamp to the visible grid — bars must not overrun names or date labels
+      const bx = Math.max(GX0, bxRaw);
+      const bw = Math.min(S.GRID_X1, bxEnd) - bx;
+      if (bw <= 0) continue; // bar entirely outside the window
       const split = b.conflict;
       const h = split ? S.SPLIT_BAR_H : S.BAR_H;
       const rx = split ? S.SPLIT_BAR_RX : S.BAR_RX;
       const isFirst = c.bars.filter((z) => z.conflict).indexOf(b) === 0;
       const by = split ? cy + (isFirst ? S.SPLIT_TOP_OFFSET : S.SPLIT_BOT_OFFSET) : cy - S.BAR_H / 2;
+      const midX = bx + Math.round(bw / 2);
       o.push(`<g class="r-${b.color}${dim}">`);
       o.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${h}" rx="${rx}"/>`);
-      if (b.code && bw >= S.CODE_MIN_BAR_W) {
-        o.push(
-          `<text class="ts" x="${bx + Math.round(bw / 2)}" y="${by + Math.round(h / 2)}" ` +
-          `text-anchor="middle" dominant-baseline="central">${esc(b.code)}</text>`
-        );
+      if (b.name && bw >= S.CODE_MIN_BAR_W) {
+        // Show name if it fits, otherwise code, otherwise nothing
+        const label = b.name.length * 6.6 < bw - 8 ? b.name : (b.code && b.code.length * 6.6 < bw - 8 ? b.code : null);
+        if (label) {
+          o.push(
+            `<text class="ts" x="${midX}" y="${by + Math.round(h / 2)}" ` +
+            `text-anchor="middle" dominant-baseline="central">${esc(label)}</text>`
+          );
+        }
       }
       o.push(`</g>`);
     }
 
     for (const k of model.conflicts.filter((z) => z.character === c.name)) {
-      const ox = Math.round(x(k.startDay)) - S.CONFLICT_PAD_X;
-      const ow = Math.round(x(k.endDay) - x(k.startDay)) + S.CONFLICT_PAD_X * 2;
+      const ox = Math.max(GX0, Math.round(x(k.startDay)) - S.CONFLICT_PAD_X);
+      const ow = Math.min(S.GRID_X1, Math.round(x(k.endDay)) + S.CONFLICT_PAD_X) - ox;
       o.push(
         `<rect x="${ox}" y="${cy + S.CONFLICT_TOP_OFFSET}" width="${ow}" height="${S.CONFLICT_H}" ` +
         `rx="${S.BAR_RX}" class="conflict"/>`

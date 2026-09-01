@@ -2,113 +2,134 @@
 <title>Per-character expedition timeline</title>
 <desc>Expedition timeline. 7 characters as rows, Selundag, 19 Foradur to Selundag, 1 Meargsyce across. Coloured bars are expeditions; matching colours stacked vertically went out together. Empty space is downtime. Each row ends at that character's current campaign day. 1 timeline conflict(s) outlined in red.</desc>
 <text class="ts" x="40" y="44">day</text>
-<text class="ts" x="130" y="44" text-anchor="middle">19</text>
-<line x1="130" y1="54" x2="130" y2="340" class="gl"/>
-<text class="ts" x="181" y="44" text-anchor="middle">25</text>
-<line x1="181" y1="54" x2="181" y2="340" class="gl"/>
-<text class="ts" x="232" y="44" text-anchor="middle">31</text>
-<line x1="232" y1="54" x2="232" y2="340" class="gl"/>
-<text class="ts" x="283" y="44" text-anchor="middle">1</text>
-<line x1="283" y1="54" x2="283" y2="340" class="gl"/>
-<text class="ts" x="334" y="44" text-anchor="middle">7</text>
-<line x1="334" y1="54" x2="334" y2="340" class="gl"/>
-<text class="ts" x="386" y="44" text-anchor="middle">13</text>
-<line x1="386" y1="54" x2="386" y2="340" class="gl"/>
-<text class="ts" x="437" y="44" text-anchor="middle">19</text>
-<line x1="437" y1="54" x2="437" y2="340" class="gl"/>
-<text class="ts" x="488" y="44" text-anchor="middle">25</text>
-<line x1="488" y1="54" x2="488" y2="340" class="gl"/>
-<text class="ts" x="539" y="44" text-anchor="middle">31</text>
-<line x1="539" y1="54" x2="539" y2="340" class="gl"/>
+<text class="ts" x="120" y="44" text-anchor="middle">19</text>
+<line x1="120" y1="54" x2="120" y2="340" class="gl"/>
+<text class="ts" x="172" y="44" text-anchor="middle">25</text>
+<line x1="172" y1="54" x2="172" y2="340" class="gl"/>
+<text class="ts" x="224" y="44" text-anchor="middle">31</text>
+<line x1="224" y1="54" x2="224" y2="340" class="gl"/>
+<text class="ts" x="277" y="44" text-anchor="middle">1</text>
+<line x1="277" y1="54" x2="277" y2="340" class="gl"/>
+<text class="ts" x="329" y="44" text-anchor="middle">7</text>
+<line x1="329" y1="54" x2="329" y2="340" class="gl"/>
+<text class="ts" x="381" y="44" text-anchor="middle">13</text>
+<line x1="381" y1="54" x2="381" y2="340" class="gl"/>
+<text class="ts" x="433" y="44" text-anchor="middle">19</text>
+<line x1="433" y1="54" x2="433" y2="340" class="gl"/>
+<text class="ts" x="486" y="44" text-anchor="middle">25</text>
+<line x1="486" y1="54" x2="486" y2="340" class="gl"/>
+<text class="ts" x="538" y="44" text-anchor="middle">31</text>
+<line x1="538" y1="54" x2="538" y2="340" class="gl"/>
 <text class="ts" x="590" y="44" text-anchor="middle">1</text>
 <line x1="590" y1="54" x2="590" y2="340" class="gl"/>
-<text class="th" x="135" y="26">Foradur</text>
-<line x1="283" y1="32" x2="283" y2="340" class="ml"/>
-<text class="th" x="288" y="26">Cwaludur</text>
+<text class="th" x="125" y="26">Foradur</text>
+<line x1="277" y1="32" x2="277" y2="340" class="ml"/>
+<text class="th" x="282" y="26">Cwaludur</text>
 <text class="th" x="40" y="78" dominant-baseline="central">Thorne</text>
+<line x1="143" y1="78" x2="567" y2="78" stroke="var(--c-inkMuted)" stroke-width="1" opacity=".3"/>
 <g class="r-teal">
-<rect x="164" y="68" width="51" height="20" rx="4"/>
-<text class="ts" x="190" y="78" text-anchor="middle" dominant-baseline="central">A</text>
+<rect x="155" y="68" width="52" height="20" rx="4"/>
+<text class="ts" x="181" y="78" text-anchor="middle" dominant-baseline="central">A</text>
 </g>
 <g class="r-purple">
-<rect x="266" y="68" width="60" height="20" rx="4"/>
-<text class="ts" x="296" y="78" text-anchor="middle" dominant-baseline="central">C</text>
+<rect x="259" y="68" width="61" height="20" rx="4"/>
+<text class="ts" x="290" y="78" text-anchor="middle" dominant-baseline="central">C</text>
 </g>
 <g class="r-blue">
-<rect x="386" y="68" width="68" height="20" rx="4"/>
-<text class="ts" x="420" y="78" text-anchor="middle" dominant-baseline="central">E</text>
+<rect x="381" y="68" width="70" height="20" rx="4"/>
+<text class="ts" x="416" y="78" text-anchor="middle" dominant-baseline="central">E</text>
 </g>
 <g class="r-coral">
-<rect x="488" y="68" width="68" height="20" rx="4"/>
-<text class="ts" x="522" y="78" text-anchor="middle" dominant-baseline="central">G</text>
+<rect x="486" y="68" width="69" height="20" rx="4"/>
+<text class="ts" x="521" y="78" text-anchor="middle" dominant-baseline="central">G</text>
 </g>
+<circle cx="143" cy="78" r="4" fill="var(--c-grid)" stroke="var(--c-inkMuted)" stroke-width="1.2"/>
+<circle cx="567" cy="78" r="5" fill="var(--c-ink)"/>
 <text class="ts" x="596" y="78" dominant-baseline="central">Cwa 33</text>
 <text class="th" x="40" y="118" dominant-baseline="central">Vex</text>
+<line x1="143" y1="118" x2="567" y2="118" stroke="var(--c-inkMuted)" stroke-width="1" opacity=".3"/>
 <g class="r-teal">
-<rect x="164" y="108" width="51" height="20" rx="4"/>
-<text class="ts" x="190" y="118" text-anchor="middle" dominant-baseline="central">A</text>
+<rect x="155" y="108" width="52" height="20" rx="4"/>
+<text class="ts" x="181" y="118" text-anchor="middle" dominant-baseline="central">A</text>
 </g>
 <g class="r-green">
-<rect x="292" y="108" width="51" height="20" rx="4"/>
-<text class="ts" x="318" y="118" text-anchor="middle" dominant-baseline="central">D</text>
+<rect x="285" y="108" width="53" height="20" rx="4"/>
+<text class="ts" x="312" y="118" text-anchor="middle" dominant-baseline="central">D</text>
 </g>
 <g class="r-coral">
-<rect x="488" y="108" width="68" height="20" rx="4"/>
-<text class="ts" x="522" y="118" text-anchor="middle" dominant-baseline="central">G</text>
+<rect x="486" y="108" width="69" height="20" rx="4"/>
+<text class="ts" x="521" y="118" text-anchor="middle" dominant-baseline="central">G</text>
 </g>
+<circle cx="143" cy="118" r="4" fill="var(--c-grid)" stroke="var(--c-inkMuted)" stroke-width="1.2"/>
+<circle cx="567" cy="118" r="5" fill="var(--c-ink)"/>
 <text class="ts" x="596" y="118" dominant-baseline="central">Cwa 33</text>
 <text class="th" x="40" y="158" dominant-baseline="central">Mira</text>
+<line x1="143" y1="158" x2="463" y2="158" stroke="var(--c-inkMuted)" stroke-width="1" opacity=".3"/>
 <g class="r-teal">
-<rect x="164" y="148" width="51" height="20" rx="4"/>
-<text class="ts" x="190" y="158" text-anchor="middle" dominant-baseline="central">A</text>
+<rect x="155" y="148" width="52" height="20" rx="4"/>
+<text class="ts" x="181" y="158" text-anchor="middle" dominant-baseline="central">A</text>
 </g>
 <g class="r-blue">
-<rect x="386" y="148" width="68" height="20" rx="4"/>
-<text class="ts" x="420" y="158" text-anchor="middle" dominant-baseline="central">E</text>
+<rect x="381" y="148" width="70" height="20" rx="4"/>
+<text class="ts" x="416" y="158" text-anchor="middle" dominant-baseline="central">E</text>
 </g>
+<circle cx="143" cy="158" r="4" fill="var(--c-grid)" stroke="var(--c-inkMuted)" stroke-width="1.2"/>
+<circle cx="463" cy="158" r="5" fill="var(--c-ink)"/>
 <text class="ts" x="596" y="158" dominant-baseline="central">Cwa 21</text>
 <text class="th" x="40" y="198" dominant-baseline="central">Bramble</text>
+<line x1="169" y1="198" x2="445" y2="198" stroke="var(--c-inkMuted)" stroke-width="1" opacity=".3"/>
 <g class="r-amber">
-<rect x="190" y="188" width="51" height="20" rx="4"/>
-<text class="ts" x="216" y="198" text-anchor="middle" dominant-baseline="central">B</text>
+<rect x="181" y="188" width="52" height="20" rx="4"/>
+<text class="ts" x="207" y="198" text-anchor="middle" dominant-baseline="central">B</text>
 </g>
 <g class="r-green">
-<rect x="292" y="188" width="51" height="20" rx="4"/>
-<text class="ts" x="318" y="198" text-anchor="middle" dominant-baseline="central">D</text>
+<rect x="285" y="188" width="53" height="20" rx="4"/>
+<text class="ts" x="312" y="198" text-anchor="middle" dominant-baseline="central">D</text>
 </g>
 <g class="r-pink">
-<rect x="411" y="188" width="26" height="20" rx="4"/>
+<rect x="407" y="188" width="26" height="20" rx="4"/>
 </g>
+<circle cx="169" cy="198" r="4" fill="var(--c-grid)" stroke="var(--c-inkMuted)" stroke-width="1.2"/>
+<circle cx="445" cy="198" r="5" fill="var(--c-ink)"/>
 <text class="ts" x="596" y="198" dominant-baseline="central">Cwa 19</text>
 <text class="th" x="40" y="238" dominant-baseline="central">Old Grask</text>
+<line x1="247" y1="238" x2="350" y2="238" stroke="var(--c-inkMuted)" stroke-width="1" opacity=".3"/>
 <g class="r-purple">
-<rect x="266" y="222" width="60" height="13" rx="3"/>
-<text class="ts" x="296" y="229" text-anchor="middle" dominant-baseline="central">C</text>
+<rect x="259" y="222" width="61" height="13" rx="3"/>
+<text class="ts" x="290" y="229" text-anchor="middle" dominant-baseline="central">C</text>
 </g>
 <g class="r-green">
-<rect x="292" y="238" width="51" height="13" rx="3"/>
-<text class="ts" x="318" y="245" text-anchor="middle" dominant-baseline="central">D</text>
+<rect x="285" y="238" width="53" height="13" rx="3"/>
+<text class="ts" x="312" y="245" text-anchor="middle" dominant-baseline="central">D</text>
 </g>
-<rect x="290" y="218" width="38" height="38" rx="4" class="conflict"/>
+<rect x="283" y="218" width="39" height="38" rx="4" class="conflict"/>
+<circle cx="247" cy="238" r="4" fill="var(--c-grid)" stroke="var(--c-inkMuted)" stroke-width="1.2"/>
+<circle cx="350" cy="238" r="5" fill="var(--c-ink)"/>
 <text class="ts" x="596" y="238" dominant-baseline="central">Cwa 8</text>
 <text class="th" x="40" y="278" dominant-baseline="central">Sorrel</text>
+<line x1="169" y1="278" x2="332" y2="278" stroke="var(--c-inkMuted)" stroke-width="1" opacity=".3"/>
 <g class="r-amber">
-<rect x="190" y="268" width="51" height="20" rx="4"/>
-<text class="ts" x="216" y="278" text-anchor="middle" dominant-baseline="central">B</text>
+<rect x="181" y="268" width="52" height="20" rx="4"/>
+<text class="ts" x="207" y="278" text-anchor="middle" dominant-baseline="central">B</text>
 </g>
 <g class="r-purple">
-<rect x="266" y="268" width="60" height="20" rx="4"/>
-<text class="ts" x="296" y="278" text-anchor="middle" dominant-baseline="central">C</text>
+<rect x="259" y="268" width="61" height="20" rx="4"/>
+<text class="ts" x="290" y="278" text-anchor="middle" dominant-baseline="central">C</text>
 </g>
+<circle cx="169" cy="278" r="4" fill="var(--c-grid)" stroke="var(--c-inkMuted)" stroke-width="1.2"/>
+<circle cx="332" cy="278" r="5" fill="var(--c-ink)"/>
 <text class="ts" x="596" y="278" dominant-baseline="central">Cwa 6</text>
 <text class="th" x="40" y="318" dominant-baseline="central">Nettle</text>
+<line x1="169" y1="318" x2="245" y2="318" stroke="var(--c-inkMuted)" stroke-width="1" opacity=".3"/>
 <g class="r-amber">
-<rect x="190" y="308" width="51" height="20" rx="4"/>
-<text class="ts" x="216" y="318" text-anchor="middle" dominant-baseline="central">B</text>
+<rect x="181" y="308" width="52" height="20" rx="4"/>
+<text class="ts" x="207" y="318" text-anchor="middle" dominant-baseline="central">B</text>
 </g>
+<circle cx="169" cy="318" r="4" fill="var(--c-grid)" stroke="var(--c-inkMuted)" stroke-width="1.2"/>
+<circle cx="245" cy="318" r="5" fill="var(--c-ink)"/>
 <text class="ts" x="596" y="318" dominant-baseline="central">For 32</text>
-<line x1="420" y1="54" x2="420" y2="340" class="query"/>
-<text class="ts" x="420" y="356" text-anchor="middle">who is free on Cwa 17?</text>
+<line x1="416" y1="54" x2="416" y2="340" class="query"/>
+<text class="ts" x="416" y="356" text-anchor="middle">who is free on Cwa 17?</text>
 <g class="r-teal"><rect x="40" y="372" width="10" height="10" rx="2"/></g>
 <text class="ts" x="56" y="381">A · Ashen vale</text>
 <g class="r-amber"><rect x="168" y="372" width="10" height="10" rx="2"/></g>
