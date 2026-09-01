@@ -8,7 +8,7 @@
 'use strict';
 
 const SPEC = {
-  version: '1.3.0',
+  version: '1.4.0',
 
   // Canvas
   VIEW_W: 680,
@@ -628,31 +628,43 @@ function renderBarbell(model) {
     }
   }
 
-  // --- expedition bands ---
+  // --- expedition bands (drawn below the axis, above the characters) ---
   visExps.forEach((e, ei) => {
     const bx0  = clampX(e.startDay);
     const bx1  = clampX(e.endDay);
-    const lane = labelLane[ei];
-    const labelY = (lanes.length - 1 - lane) * BAND_LABEL_H + BAND_LABEL_H;
+    if (bx1 <= bx0) return;
+    const lane   = labelLane[ei];
+    // lanes stack bottom-up so lane 0 is closest to the axis
+    const labelY = BAND_HEADER_H - (lane + 1) * BAND_LABEL_H + Math.round(BAND_LABEL_H / 2);
 
-    // band fill
+    // band fill — lighter opacity so it doesn't muddy dark backgrounds
     o.push(`<rect x="${bx0}" y="${chartTop}" width="${bx1 - bx0}" height="${chartBot - chartTop}" ` +
-           `fill="var(--f-${e.color})" opacity=".18"/>`);
-    // left + right edges
-    o.push(`<line x1="${bx0}" y1="${4}" x2="${bx0}" y2="${chartBot}" ` +
-           `stroke="var(--s-${e.color})" stroke-width="1" stroke-dasharray="4 3" opacity=".7"/>`);
-    o.push(`<line x1="${bx1}" y1="${4}" x2="${bx1}" y2="${chartBot}" ` +
-           `stroke="var(--s-${e.color})" stroke-width="1" stroke-dasharray="4 3" opacity=".7"/>`);
-    // label + horizontal rule
-    const midX  = Math.round((bx0 + bx1) / 2);
-    const halfW = Math.round((bx1 - bx0) / 2) - 4;
-    if (halfW > 8) {
-      o.push(`<line x1="${bx0 + 4}" y1="${labelY}" x2="${midX - 4}" y2="${labelY}" ` +
-             `stroke="var(--s-${e.color})" stroke-width="0.8" opacity=".5"/>`);
-      o.push(`<text class="ts" x="${midX}" y="${labelY}" text-anchor="middle" ` +
-             `dominant-baseline="central" fill="var(--i-${e.color})">${esc(e.name)}</text>`);
-      o.push(`<line x1="${midX + 4}" y1="${labelY}" x2="${bx1 - 4}" y2="${labelY}" ` +
-             `stroke="var(--s-${e.color})" stroke-width="0.8" opacity=".5"/>`);
+           `fill="var(--f-${e.color})" opacity=".10"/>`);
+    // left + right edges, start below the label area
+    o.push(`<line x1="${bx0}" y1="${BAND_HEADER_H}" x2="${bx0}" y2="${chartBot}" ` +
+           `stroke="var(--s-${e.color})" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>`);
+    o.push(`<line x1="${bx1}" y1="${BAND_HEADER_H}" x2="${bx1}" y2="${chartBot}" ` +
+           `stroke="var(--s-${e.color})" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>`);
+    // label: left rule · name · right rule, clipped to band width
+    const midX = Math.round((bx0 + bx1) / 2);
+    const availW = bx1 - bx0 - 8;
+    const approxLabelW = e.name.length * 6.2;
+    if (availW >= 20) {
+      if (approxLabelW < availW) {
+        const ruleGap = Math.round((availW - approxLabelW) / 2) - 2;
+        if (ruleGap > 4) {
+          o.push(`<line x1="${bx0 + 4}" y1="${labelY}" x2="${bx0 + 4 + ruleGap}" y2="${labelY}" ` +
+                 `stroke="var(--s-${e.color})" stroke-width="0.8" opacity=".4"/>`);
+          o.push(`<line x1="${bx1 - 4 - ruleGap}" y1="${labelY}" x2="${bx1 - 4}" y2="${labelY}" ` +
+                 `stroke="var(--s-${e.color})" stroke-width="0.8" opacity=".4"/>`);
+        }
+        o.push(`<text class="ts" x="${midX}" y="${labelY}" text-anchor="middle" ` +
+               `dominant-baseline="central" fill="var(--i-${e.color})">${esc(e.name)}</text>`);
+      } else {
+        // name wider than band — truncate to fit
+        o.push(`<text class="ts" x="${bx0 + 4}" y="${labelY}" ` +
+               `dominant-baseline="central" fill="var(--i-${e.color})">${esc(e.name)}</text>`);
+      }
     }
   });
 
@@ -660,31 +672,47 @@ function renderBarbell(model) {
   chars.forEach((c, i) => {
     const cy  = BAND_HEADER_H + rowY(i);
     const dim = c.status !== 'active' ? ' dim' : '';
-    const x0  = clampX(c.created);
-    const x1  = clampX(c.currentDay);
+
+    // Clamp both endpoints to the visible window
+    const rawX0 = Math.round(x(c.created));
+    const rawX1 = Math.round(x(c.currentDay));
+    const spineL = Math.max(S.GRID_X0, rawX0);
+    const spineR = Math.min(S.GRID_X1, rawX1);
+    const createdOffscreen = rawX0 < S.GRID_X0;
+    const currentOffscreen = rawX1 > S.GRID_X1;
 
     // name
     o.push(`<text class="th${dim}" x="${S.SAFE_L}" y="${cy}" dominant-baseline="central">${esc(c.name)}</text>`);
 
     // spine
-    if (x1 > x0) {
-      o.push(`<line x1="${x0}" y1="${cy}" x2="${x1}" y2="${cy}" ` +
-             `stroke="var(--c-ink)" stroke-width="1.5" class="${dim ? 'dim' : ''}"/>`);
+    if (spineR > spineL) {
+      o.push(`<line x1="${spineL}" y1="${cy}" x2="${spineR}" y2="${cy}" ` +
+             `stroke="var(--c-inkMuted)" stroke-width="1.5"${dim ? ' opacity=".45"' : ''}/>`);
     }
 
-    // left endpoint: open circle = introduced
-    o.push(`<circle cx="${x0}" cy="${cy}" r="5" fill="var(--c-grid)" stroke="var(--c-inkMuted)" stroke-width="1.5" class="${dim ? 'dim' : ''}"/>`);
-    // right endpoint: filled circle = current day
-    o.push(`<circle cx="${x1}" cy="${cy}" r="6" fill="var(--c-ink)" class="${dim ? 'dim' : ''}"/>`);
+    // left endpoint: open circle if in window, small notch if scrolled off-left
+    if (!createdOffscreen) {
+      o.push(`<circle cx="${spineL}" cy="${cy}" r="4" fill="var(--c-grid)" ` +
+             `stroke="var(--c-inkMuted)" stroke-width="1.5"${dim ? ' opacity=".45"' : ''}/>`);
+    } else {
+      // dashes indicate the bar continues off to the left
+      o.push(`<line x1="${spineL}" y1="${cy - 5}" x2="${spineL}" y2="${cy + 5}" ` +
+             `stroke="var(--c-inkMuted)" stroke-width="1.5"${dim ? ' opacity=".45"' : ''}/>`);
+    }
 
-    // participation dots
+    // right endpoint: filled circle = current day
+    if (!currentOffscreen) {
+      o.push(`<circle cx="${spineR}" cy="${cy}" r="5" fill="var(--c-ink)"${dim ? ' opacity=".45"' : ''}/>`);
+    }
+
+    // participation dots — placed at band midpoint, on top of the spine
     const partSet = new Set(c.expeditions.map((e) => e.id));
     for (const e of visExps) {
       if (!partSet.has(e.id)) continue;
       const dotX = clampX(Math.round((e.startDay + e.endDay) / 2));
-      if (dotX <= x0 || dotX >= x1) continue; // dot inside the spine only
+      if (dotX < spineL || dotX > spineR) continue;
       o.push(`<circle cx="${dotX}" cy="${cy}" r="4" fill="var(--f-${e.color})" ` +
-             `stroke="var(--s-${e.color})" stroke-width="1.2"/>`);
+             `stroke="var(--s-${e.color})" stroke-width="1.2"${dim ? ' opacity=".45"' : ''}/>`);
     }
 
     // current-day label
