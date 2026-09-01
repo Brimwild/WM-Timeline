@@ -113,12 +113,12 @@ document.head.insertAdjacentHTML('beforeend', '<style>' + C.chartCSS() + '</styl
 
 var state = { data: null, endDay: null, queryDay: null, show: 'window', find: '', view: 'gantt' };
 
-function switchView(v) {
+window.switchView = function(v) {
   state.view = v;
   document.getElementById('tab-gantt').className = 'vtab' + (v === 'gantt' ? ' active' : '');
   document.getElementById('tab-barbell').className = 'vtab' + (v === 'barbell' ? ' active' : '');
   draw();
-}
+};
 
 function parseCSV(text) {
   var rows = [], row = [], f = '', q = false, i, c;
