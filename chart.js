@@ -65,6 +65,7 @@ const SPEC = {
   LEGEND_CHAR_W: 6.6,
 
   BOTTOM_PAD: 24,
+  SPINE_PAD: 12,
 
   // Ramp assignment order. Expeditions take these in ascending start_day order
   // unless the sheet supplies an explicit colour.
@@ -239,10 +240,15 @@ function buildModel({ expeditions, roster, characters = [], queryDay = null }) {
         }
       }
     }
+    const firstStart = list.length ? Math.min(...list.map((e) => e.startDay)) : 0;
+    const createdRaw = characters.find((c) => String(c.name).trim() === name);
+    const createdDay = createdRaw && createdRaw.created_day !== '' && !isNaN(parseInt(createdRaw.created_day, 10))
+      ? parseInt(createdRaw.created_day, 10) : firstStart;
     chars.push({
       name,
       status: statusOf.get(name) || 'active',
       currentDay: list.length ? Math.max(...list.map((e) => e.endDay)) : 0,
+      created: createdDay,
       bars: list.map((e) => ({ ...e, conflict: bad.has(e.id) })),
     });
   }
@@ -348,6 +354,15 @@ function renderChart(model) {
     const dim = c.status !== 'active' ? ' dim' : '';
     o.push(`<text class="th${dim}" x="${S.SAFE_L}" y="${cy}" dominant-baseline="central">${esc(c.name)}</text>`);
 
+    // spine — drawn first so bars render on top
+    const createdX = Math.round(x(c.created != null ? c.created : (c.bars.length ? c.bars[0].startDay : dayMin)));
+    const currentX = Math.round(x(c.currentDay));
+    const spineL = Math.max(S.GRID_X0, createdX - S.SPINE_PAD);
+    const spineR = Math.min(S.GRID_X1, currentX + S.SPINE_PAD);
+    if (spineR > spineL) {
+      o.push(`<line x1="${spineL}" y1="${cy}" x2="${spineR}" y2="${cy}" stroke="var(--c-inkMuted)" stroke-width="1" opacity=".3"${dim ? ' class="dim"' : ''}/>`);
+    }
+
     for (const b of c.bars) {
       const bx = Math.round(x(b.startDay));
       const bw = Math.round(x(b.endDay) - x(b.startDay));
@@ -375,6 +390,15 @@ function renderChart(model) {
         `rx="${S.BAR_RX}" class="conflict"/>`
       );
     }
+
+    // --- endpoint circles (drawn after bars so they sit on top) ---
+    const createdOffscreen = createdX < S.GRID_X0;
+    if (!createdOffscreen) {
+      o.push(`<circle cx="${spineL}" cy="${cy}" r="4" fill="var(--c-grid)" stroke="var(--c-inkMuted)" stroke-width="1.2"${dim ? ' opacity=".45"' : ''}/>`);
+    } else {
+      o.push(`<line x1="${S.GRID_X0}" y1="${cy - 5}" x2="${S.GRID_X0}" y2="${cy + 5}" stroke="var(--c-inkMuted)" stroke-width="1.5"${dim ? ' opacity=".45"' : ''}/>`);
+    }
+    o.push(`<circle cx="${spineR}" cy="${cy}" r="5" fill="var(--c-ink)"${dim ? ' opacity=".45"' : ''}/>`);
 
     o.push(`<text class="ts${dim}" x="${S.DAY_LABEL_X}" y="${cy}" ` +
             `dominant-baseline="central">${esc(formatDay(c.currentDay))}</text>`);
@@ -462,270 +486,7 @@ const DEMO = {
 };
 
 
-// ---------------------------------------------------------------------------
-// Barbell view — character lifespan bars with expedition bands + dots
-// ---------------------------------------------------------------------------
-
-function buildBarbellModel({ expeditions, roster, characters = [] }) {
-  // Re-use expedition colour/sort from buildModel
-  const exps = expeditions
-    .map((e) => ({
-      id: String(e.id).trim(),
-      name: String(e.name || '').trim(),
-      startDay: Number(e.start_day),
-      endDay: Number(e.end_day),
-      color: (e.color || '').trim() || null,
-    }))
-    .filter((e) => e.id && Number.isFinite(e.startDay) && Number.isFinite(e.endDay))
-    .sort((a, b) => a.startDay - b.startDay || a.id.localeCompare(b.id));
-
-  const nRamps = SPEC.RAMP_ORDER.length;
-  let ri = 0;
-  exps.forEach((e, i) => {
-    if (e.color && RAMPS[e.color]) return;
-    const taken = {};
-    for (let j = 0; j < i; j++) {
-      const p = exps[j];
-      if (p.color && Math.max(p.startDay, e.startDay) < Math.min(p.endDay, e.endDay)) taken[p.color] = true;
-    }
-    let pick = null;
-    for (let k = 0; k < nRamps; k++) {
-      const cand = SPEC.RAMP_ORDER[(ri + k) % nRamps];
-      if (!taken[cand]) { pick = cand; break; }
-    }
-    e.color = pick || SPEC.RAMP_ORDER[ri % nRamps];
-    ri++;
-  });
-
-  const byId = new Map(exps.map((e) => [e.id, e]));
-
-  // character created_day from characters tab; fallback to first expedition start
-  const createdOf = new Map();
-  const statusOf  = new Map();
-  for (const c of characters) {
-    const n = String(c.name).trim();
-    const d = parseInt(c.created_day, 10);
-    if (n) {
-      if (!isNaN(d)) createdOf.set(n, d);
-      statusOf.set(n, String(c.status || 'active').trim().toLowerCase());
-    }
-  }
-
-  // group roster by character
-  const rosterOf = new Map();
-  for (const r of roster) {
-    const name = String(r.character || '').trim();
-    const exp  = byId.get(String(r.expedition_id || '').trim());
-    if (!name || !exp) continue;
-    if (!rosterOf.has(name)) rosterOf.set(name, []);
-    rosterOf.get(name).push(exp);
-  }
-  for (const c of characters) {
-    const n = String(c.name).trim();
-    if (n && !rosterOf.has(n)) rosterOf.set(n, []);
-  }
-
-  const chars = [];
-  for (const [name, list] of rosterOf) {
-    list.sort((a, b) => a.startDay - b.startDay);
-    const currentDay = list.length ? Math.max(...list.map((e) => e.endDay)) : 0;
-    // created_day: explicit > first expedition start > 0
-    const created = createdOf.has(name)
-      ? createdOf.get(name)
-      : (list.length ? list[0].startDay : 0);
-    chars.push({
-      name,
-      status: statusOf.get(name) || 'active',
-      created,
-      currentDay,
-      expeditions: list,
-    });
-  }
-
-  // sort: active first, then by currentDay desc, then name
-  chars.sort((a, b) =>
-    (a.status === 'active' ? 0 : 1) - (b.status === 'active' ? 0 : 1) ||
-    b.currentDay - a.currentDay ||
-    a.name.localeCompare(b.name)
-  );
-
-  const maxDay = Math.max(0, ...chars.map((c) => c.currentDay));
-  const dayMax = ceilToWeek(maxDay) || SPEC.WINDOW_DAYS;
-  const dayMin = dayMax - SPEC.WINDOW_DAYS;
-
-  return { characters: chars, expeditions: exps, dayMin, dayMax };
-}
-
-function renderBarbell(model) {
-  const S = SPEC;
-  const { characters: chars, expeditions: allExps, dayMin, dayMax } = model;
-
-  const pxPerDay = (S.GRID_X1 - S.GRID_X0) / (dayMax - dayMin);
-  const x   = (d) => S.GRID_X0 + (d - dayMin) * pxPerDay;
-  const rowY = (i) => S.ROW0_CENTER + i * S.ROW_PITCH;
-  const clampX = (d) => Math.max(S.GRID_X0, Math.min(S.GRID_X1, Math.round(x(d))));
-
-  // Only bands that overlap the visible window
-  const visExps = allExps.filter((e) => e.endDay > dayMin && e.startDay < dayMax);
-
-  const gridBottom = rowY(Math.max(chars.length - 1, 0)) + S.GRID_BOTTOM_PAD;
-
-  // --- stagger band labels so they don't collide ---
-  // Simple greedy: assign each band to the first lane whose last label ends before this one starts
-  const BAND_LABEL_PAD = 6;
-  const lanes = []; // each lane: last right edge seen
-  const labelLane = [];
-  for (const e of visExps) {
-    const bx0 = clampX(e.startDay);
-    const bx1 = clampX(e.endDay);
-    const labelW = Math.min(e.name.length * 6.6 + BAND_LABEL_PAD * 2, bx1 - bx0 + 60);
-    const labelL = Math.round((bx0 + bx1) / 2) - Math.round(labelW / 2);
-    const labelR = labelL + labelW;
-    let lane = lanes.findIndex((r) => r <= labelL - 4);
-    if (lane < 0) { lane = lanes.length; lanes.push(0); }
-    lanes[lane] = labelR;
-    labelLane.push(lane);
-  }
-  const BAND_LABEL_H   = 16; // height per stagger lane
-  const BAND_HEADER_H  = lanes.length * BAND_LABEL_H + 8;
-
-  const totalH = BAND_HEADER_H + S.GRID_TOP + (gridBottom - S.GRID_TOP) + S.BOTTOM_PAD + 20;
-  const chartTop = BAND_HEADER_H + S.GRID_TOP;
-  const chartBot = BAND_HEADER_H + gridBottom;
-  const axisY    = BAND_HEADER_H + S.AXIS_BASELINE - (S.GRID_TOP - S.AXIS_BASELINE);
-
-  const o = [];
-  o.push(`<svg width="100%" viewBox="0 0 ${S.VIEW_W} ${totalH}" role="img" xmlns="http://www.w3.org/2000/svg">`);
-  o.push(`<title>Character lifespan and expedition bands</title>`);
-  o.push(`<desc>Barbell chart showing each character's active lifespan with expedition bands and participation dots.</desc>`);
-
-  // --- axis ticks + gridlines ---
-  o.push(`<text class="ts" x="${S.SAFE_L}" y="${axisY}">${CALENDAR.enabled ? 'day' : 'campaign day'}</text>`);
-
-  for (let d = dayMin; d <= dayMax; d += S.TICK_EVERY) {
-    const px = Math.round(x(d));
-    const label = CALENDAR.enabled ? fromDay(d).dayOfMonth : d;
-    o.push(`<text class="ts" x="${px}" y="${axisY}" text-anchor="middle">${label}</text>`);
-    o.push(`<line x1="${px}" y1="${chartTop}" x2="${px}" y2="${chartBot}" class="gl"/>`);
-  }
-
-  // month band tier
-  if (CALENDAR.enabled) {
-    let d = dayMin;
-    while (d < dayMax) {
-      const p = fromDay(d);
-      let end = d + (CALENDAR.monthDays - p.dayOfMonth + 1);
-      if (end > dayMax) end = dayMax;
-      const x0 = Math.round(x(d));
-      const span = Math.round(x(end)) - x0;
-      if (d !== dayMin) o.push(`<line x1="${x0}" y1="${BAND_HEADER_H + S.MONTH_BASELINE + 6}" x2="${x0}" y2="${chartBot}" class="ml"/>`);
-      const name = span >= S.MONTH_LABEL_FULL ? p.month : span >= S.MONTH_LABEL_ABBR ? p.abbr : null;
-      if (name) {
-        const yr = p.year > 1 ? ` \u00b7 Y${p.year}` : '';
-        o.push(`<text class="th" x="${x0 + 5}" y="${BAND_HEADER_H + S.MONTH_BASELINE}">${esc(name + yr)}</text>`);
-      }
-      d = end;
-    }
-  }
-
-  // --- expedition bands (drawn below the axis, above the characters) ---
-  visExps.forEach((e, ei) => {
-    const bx0  = clampX(e.startDay);
-    const bx1  = clampX(e.endDay);
-    if (bx1 <= bx0) return;
-    const lane   = labelLane[ei];
-    // lanes stack bottom-up so lane 0 is closest to the axis
-    const labelY = BAND_HEADER_H - (lane + 1) * BAND_LABEL_H + Math.round(BAND_LABEL_H / 2);
-
-    // band fill — lighter opacity so it doesn't muddy dark backgrounds
-    o.push(`<rect x="${bx0}" y="${chartTop}" width="${bx1 - bx0}" height="${chartBot - chartTop}" ` +
-           `fill="var(--f-${e.color})" opacity=".10"/>`);
-    // left + right edges, start below the label area
-    o.push(`<line x1="${bx0}" y1="${BAND_HEADER_H}" x2="${bx0}" y2="${chartBot}" ` +
-           `stroke="var(--s-${e.color})" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>`);
-    o.push(`<line x1="${bx1}" y1="${BAND_HEADER_H}" x2="${bx1}" y2="${chartBot}" ` +
-           `stroke="var(--s-${e.color})" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>`);
-    // label: left rule · name · right rule, clipped to band width
-    const midX = Math.round((bx0 + bx1) / 2);
-    const availW = bx1 - bx0 - 8;
-    const approxLabelW = e.name.length * 6.2;
-    if (availW >= 20) {
-      if (approxLabelW < availW) {
-        const ruleGap = Math.round((availW - approxLabelW) / 2) - 2;
-        if (ruleGap > 4) {
-          o.push(`<line x1="${bx0 + 4}" y1="${labelY}" x2="${bx0 + 4 + ruleGap}" y2="${labelY}" ` +
-                 `stroke="var(--s-${e.color})" stroke-width="0.8" opacity=".4"/>`);
-          o.push(`<line x1="${bx1 - 4 - ruleGap}" y1="${labelY}" x2="${bx1 - 4}" y2="${labelY}" ` +
-                 `stroke="var(--s-${e.color})" stroke-width="0.8" opacity=".4"/>`);
-        }
-        o.push(`<text class="ts" x="${midX}" y="${labelY}" text-anchor="middle" ` +
-               `dominant-baseline="central" fill="var(--i-${e.color})">${esc(e.name)}</text>`);
-      } else {
-        // name wider than band — truncate to fit
-        o.push(`<text class="ts" x="${bx0 + 4}" y="${labelY}" ` +
-               `dominant-baseline="central" fill="var(--i-${e.color})">${esc(e.name)}</text>`);
-      }
-    }
-  });
-
-  // --- character barbells ---
-  chars.forEach((c, i) => {
-    const cy  = BAND_HEADER_H + rowY(i);
-    const dim = c.status !== 'active' ? ' dim' : '';
-
-    // Clamp both endpoints to the visible window
-    const rawX0 = Math.round(x(c.created));
-    const rawX1 = Math.round(x(c.currentDay));
-    const spineL = Math.max(S.GRID_X0, rawX0);
-    const spineR = Math.min(S.GRID_X1, rawX1);
-    const createdOffscreen = rawX0 < S.GRID_X0;
-    const currentOffscreen = rawX1 > S.GRID_X1;
-
-    // name
-    o.push(`<text class="th${dim}" x="${S.SAFE_L}" y="${cy}" dominant-baseline="central">${esc(c.name)}</text>`);
-
-    // spine
-    if (spineR > spineL) {
-      o.push(`<line x1="${spineL}" y1="${cy}" x2="${spineR}" y2="${cy}" ` +
-             `stroke="var(--c-inkMuted)" stroke-width="1.5"${dim ? ' opacity=".45"' : ''}/>`);
-    }
-
-    // left endpoint: open circle if in window, small notch if scrolled off-left
-    if (!createdOffscreen) {
-      o.push(`<circle cx="${spineL}" cy="${cy}" r="4" fill="var(--c-grid)" ` +
-             `stroke="var(--c-inkMuted)" stroke-width="1.5"${dim ? ' opacity=".45"' : ''}/>`);
-    } else {
-      // dashes indicate the bar continues off to the left
-      o.push(`<line x1="${spineL}" y1="${cy - 5}" x2="${spineL}" y2="${cy + 5}" ` +
-             `stroke="var(--c-inkMuted)" stroke-width="1.5"${dim ? ' opacity=".45"' : ''}/>`);
-    }
-
-    // right endpoint: filled circle = current day
-    if (!currentOffscreen) {
-      o.push(`<circle cx="${spineR}" cy="${cy}" r="5" fill="var(--c-ink)"${dim ? ' opacity=".45"' : ''}/>`);
-    }
-
-    // participation dots — placed at band midpoint, on top of the spine
-    const partSet = new Set(c.expeditions.map((e) => e.id));
-    for (const e of visExps) {
-      if (!partSet.has(e.id)) continue;
-      const dotX = clampX(Math.round((e.startDay + e.endDay) / 2));
-      if (dotX < spineL || dotX > spineR) continue;
-      o.push(`<circle cx="${dotX}" cy="${cy}" r="4" fill="var(--f-${e.color})" ` +
-             `stroke="var(--s-${e.color})" stroke-width="1.2"${dim ? ' opacity=".45"' : ''}/>`);
-    }
-
-    // current-day label
-    o.push(`<text class="ts${dim}" x="${S.DAY_LABEL_X}" y="${cy}" ` +
-           `dominant-baseline="central">${esc(formatDay(c.currentDay))}</text>`);
-  });
-
-  o.push(`</svg>`);
-  return o.join('\n');
-}
-
 var API = { SPEC: SPEC, RAMPS: RAMPS, CHROME: CHROME, DEMO: DEMO,
-            buildBarbellModel: buildBarbellModel, renderBarbell: renderBarbell,
             CALENDAR: CALENDAR, fromDay: fromDay, formatDay: formatDay,
             formatLong: formatLong, paletteCSS: paletteCSS, buildModel: buildModel,
             freeOn: freeOn, renderChart: renderChart, chartCSS: chartCSS };

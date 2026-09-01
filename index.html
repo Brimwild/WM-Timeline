@@ -34,19 +34,12 @@
   .warn h2{color:var(--c-conflict)}
   ul{margin:6px 0 0;padding-left:20px}
   footer{margin-top:28px;font-size:12px;color:var(--c-hint)}
-  .vtabs{display:flex;gap:6px;margin:0 0 16px}
-  .vtab{font:inherit;font-size:13px;padding:5px 14px;border:.5px solid var(--line);
-    border-radius:20px;background:transparent;color:var(--c-inkMuted);cursor:pointer}
-  .vtab.active{background:var(--c-ink);color:var(--page);border-color:var(--c-ink)}
+
 </style>
 </head>
 <body>
 <main>
   <h1>Expedition timeline</h1>
-  <div class="vtabs" id="vtabs">
-    <button class="vtab active" id="tab-gantt" onclick="switchView('gantt')">Expedition log</button>
-    <button class="vtab" id="tab-barbell" onclick="switchView('barbell')">Character timeline</button>
-  </div>
   <p class="sub" id="sub">Loading&hellip;</p>
   <div id="chart"></div>
 
@@ -111,14 +104,9 @@ var WEB_APP_URL = '';
 var C = window.WMChart;
 document.head.insertAdjacentHTML('beforeend', '<style>' + C.chartCSS() + '</style>');
 
-var state = { data: null, endDay: null, queryDay: null, show: 'window', find: '', view: 'gantt' };
+var state = { data: null, endDay: null, queryDay: null, show: 'window', find: '' };
 
-window.switchView = function(v) {
-  state.view = v;
-  document.getElementById('tab-gantt').className = 'vtab' + (v === 'gantt' ? ' active' : '');
-  document.getElementById('tab-barbell').className = 'vtab' + (v === 'barbell' ? ' active' : '');
-  draw();
-};
+
 
 function parseCSV(text) {
   var rows = [], row = [], f = '', q = false, i, c;
@@ -195,45 +183,19 @@ function pickRows(m) {
 function draw() {
   var m = fullModel();
   var total = m.characters.length;
-  var svg;
-  if (state.view === 'barbell') {
-    var bm = C.buildBarbellModel({
-      expeditions: state.data.expeditions,
-      roster: state.data.roster,
-      characters: state.data.characters
-    });
-    bm.dayMin = m.dayMin;
-    bm.dayMax = m.dayMax;
-    bm.characters = bm.characters.filter(function (c) {
-      if (state.find.trim()) return c.name.toLowerCase().indexOf(state.find.trim().toLowerCase()) > -1;
-      if (state.show !== 'all' && c.status !== 'active') return false;
-      if (state.show === 'active') return true;
-      return c.currentDay >= bm.dayMin || c.expeditions.some(function (e) {
-        return e.endDay > bm.dayMin && e.startDay < bm.dayMax;
-      });
-    });
-    svg = C.renderBarbell(bm);
-    total = bm.characters.length;
-  } else {
-    m.characters = pickRows(m);
-    svg = C.renderChart(m);
-  }
-  document.getElementById('chart').innerHTML = svg;
+  m.characters = pickRows(m);
+  document.getElementById('chart').innerHTML = C.renderChart(m);
 
-  var hidden = total - (state.view === 'barbell'
-    ? document.getElementById('chart').querySelectorAll('text.th,text.th.dim').length
-    : m.characters.length);
+  var hidden = total - m.characters.length;
   document.getElementById('viewOut').textContent =
     C.formatLong(m.dayMin) + ' to ' + C.formatLong(m.dayMax) +
-    ' \u00b7 ' + (state.view === 'barbell'
-      ? C.buildBarbellModel({expeditions:state.data.expeditions,roster:state.data.roster,characters:state.data.characters}).characters.length
-      : total) + ' characters';
+    ' \u00b7 ' + m.characters.length + ' of ' + total + ' characters' +
+    (hidden ? ' \u00b7 ' + hidden + ' hidden' : '');
 
   var p = new URLSearchParams();
   p.set('end', state.endDay);
   if (state.queryDay !== null) p.set('day', state.queryDay);
   if (state.show !== 'window') p.set('show', state.show);
-  if (state.view !== 'gantt') p.set('view', state.view);
   history.replaceState(null, '', '?' + p.toString());
   return m;
 }
@@ -254,9 +216,7 @@ function mount(data, note) {
   state.endDay = Number(url.get('end')) || m.dayMax;
   state.queryDay = url.has('day') ? Number(url.get('day')) : m.dayMax - 10;
   if (['window', 'active', 'all'].indexOf(url.get('show')) > -1) state.show = url.get('show');
-  if (url.get('view') === 'barbell') { state.view = 'barbell';
-    document.getElementById('tab-gantt').className = 'vtab';
-    document.getElementById('tab-barbell').className = 'vtab active'; }
+
 
   document.getElementById('sub').textContent = note;
   document.getElementById('freePanel').hidden = false;
