@@ -163,20 +163,54 @@ The constant is declared in both `chart.js` and `Code.gs`, since neither can imp
 other. `verify.mjs` extracts Code.gs's copy and compares the two, so the build fails if the
 sheet and the chart ever disagree about what day it is.
 
-### Entering dates
+## Editing the sheet
 
-Nobody counts days. **West Marches → Log an expedition** asks for a month and a day of the
-month, and shows the campaign day and weekday as you pick. Duration in days is the other
-input, since that's what you know from play.
+The sheet has three tabs: `expeditions`, `roster`, and `characters`.
 
-Two spreadsheet functions exist for working in cells directly:
+### Logging a session
 
-- `=WMDATE(D2)` turns a campaign day into an in-world date
-- `=WMDAY("Meargsyce", 1)` turns an in-world date into a campaign day
+Use **West Marches → Log an expedition** in the sheet menu. Fill in the fields and check who went. Submit. Done.
 
-Neither is needed for normal logging. **West Marches → Show date reference** prints the
-current mapping if you want to sanity-check it.
+If you prefer to type directly into the sheet:
 
+**`expeditions`** — one row per expedition.
+
+| Column | What to enter |
+|---|---|
+| `id` | Unique identifier. Use EXP-001, EXP-002, etc. in order. |
+| `name` | Full expedition name. Shows in the legend. |
+| `code` | Single letter. Shows on the bar in the chart. |
+| `start_day` | Campaign day the party departed. Integer. |
+| `end_day` | Campaign day the party returned. Integer. |
+| `dm` | Who ran it. |
+
+**`roster`** — one row per character per expedition. If four characters went on EXP-012, that's four rows.
+
+| Column | What to enter |
+|---|---|
+| `expedition_id` | Must match an id in the expeditions tab exactly. |
+| `character` | Character name. Must match the characters tab exactly. |
+
+**`characters`** — add a row here when a new character is created, or to mark one retired or dead.
+
+| Column | What to enter |
+|---|---|
+| `name` | Character name. |
+| `player` | Player name. |
+| `status` | `active`, `retired`, or `dead`. |
+| `created_day` | Campaign day the character was introduced. |
+
+### Day numbers
+
+The sheet stores campaign days as plain integers. Day 0 is Haerfest 27. Count forward from there — if a party leaves 10 days after campaign start, `start_day` is 10. The chart converts everything to in-world dates automatically.
+
+The chart updates within five minutes of any change to the sheet.
+
+### Rules
+
+- A character's current day is derived from their last `end_day`. Do not add a current-day column.
+- `expedition_id` in roster and `character` in roster must match their source tabs exactly. Capitalisation counts.
+- Never delete rows. Mark characters retired or dead in the `characters` tab instead.
 The axis shows month names on an upper band and day-of-month below. Row labels and the
 availability panel read `Mea 4`; the panels spell out `Selundag, 4 Meargsyce`.
 
